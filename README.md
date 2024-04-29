@@ -1,4 +1,4 @@
-# Deposit Subcriptions Predictions Project
+# Deposit Subscriptions Predictions Project
 
 This is a graduate course-level research project completed by Emily Au, Alex Mak, and Zheng En Than in MATH 509 (Data Structures and Platforms) at the University of Alberta. This project strives to predict whether bank clients will subscribe to term deposit subscriptions through tree-based machine-learning classifier models (Decision Tree, Random Forest, and XGBoost).
 
@@ -9,7 +9,7 @@ This is a graduate course-level research project completed by Emily Au, Alex Mak
 ## 2. Project Objective
 1. The significant factors influencing a potential client's decision to subscribe to a term deposit
 2. The predictive accuracy of our classifier models in forecasting subscription outcomes
-3. The predictive performance impact of utilizng bagging and bossting techniques on tree-based machine-learning models
+3. The predictive performance impact of utilizing bagging and boosting techniques on tree-based machine-learning models
 
 
 ## 3. Project Structure
@@ -31,10 +31,10 @@ This is a graduate course-level research project completed by Emily Au, Alex Mak
 * The fitted Model and their corresponding parameters after being trained in this project.
 
 ### Tableau Visualziations
-* Visualziations conducted within Tableau.
+* Visualizations conducted within Tableau.
 
-### Visualziations
-* Visualziations conducted within Python and its corresponding library (matplotlib and seaborn).
+### Visualisations
+* Visualizations conducted within Python and its corresponding library (matplotlib and seaborn).
 
 ### Final Project Report
 * The finalized report of our project.
@@ -43,7 +43,7 @@ This is a graduate course-level research project completed by Emily Au, Alex Mak
 ## 4. Project Overview
 We have conducted the following steps in our project:
 1. Data Preprocessing
-<br> (data cleaning and transformation, anaomaly detection analysis, exploratory data analysis)
+<br> (data cleaning and transformation, anomaly detection analysis, exploratory data analysis)
 2. Feature Engineering
 <br> (feature importance, feature selection)
 3. Statistical Machine learning Model Development
@@ -53,8 +53,8 @@ We have conducted the following steps in our project:
 
 
 ## 5. Project Key Insights
-* The most important feature are: last contact duration, outcome of previous marketing campaign, and day of year.
-* Bagging and boosting bring performance improvement from decision tree for this specific problem and dataset.
+* The most important features are: last contact duration, outcome of the previous marketing campaign, and day of year.
+* Bagging and boosting bring performance improvement from the Decision Tree for this specific problem and dataset.
 * Numerical Results:
 <br>
 
@@ -67,14 +67,14 @@ We have conducted the following steps in our project:
 
 ## 6. Project Critique
 *  Ensemble methods (in Random forest and XGBoost) can be more complex than Decision Tree, making it challenging to interpret the reasoning behind each prediction.
-*  Limited generalizability as the dataset consists data from 1 Portugese bank and their specific marketing approach. 
+*  Limited generalizability as the dataset consists of data from a Portuguese bank and its specific marketing approach. 
 
 
 ## 7.  Further Improvements & Investigation
-* We would like to re-examine this project with a different dataset, where it may came from another bank in the world with a different telemarketing campaign.
-* We are interested in further optimizing our tree-based machine learning models, but that also comes to a drawback of consuming additional computational resources.
-* We are looking forward to impelement gradient boosted random forest (GBRF), which incorporating both bagging and boosting in a tree-based model. We can analyze the impact of using both bagging and boosting compared to just one of them at a time in Random Forest and Decision Tree.
-* We would conduct more in-depth analysis, such as exploring any temporal patterns or clustering the data based on client demographics to provide deeper insights into customer behavior, utimately help banks devise more effective targeted marketing strategies.
+* We would like to re-examine this project with a different dataset, where it may come from another bank in the world with a different telemarketing campaign.
+* We are interested in further optimizing our tree-based machine learning models, but that also comes with the drawback of consuming additional computational resources.
+* We are looking forward to implementing gradient-boosted random forest (GBRF), which incorporates both bagging and boosting in a tree-based model. We can analyze the impact of using both bagging and boosting compared to just one of them at a time in Random Forest and Decision Tree.
+* We would conduct more in-depth analysis, such as exploring any temporal patterns or clustering the data based on client demographics to provide deeper insights into customer behavior, ultimately helping banks devise more effective targeted marketing strategies.
 
 
-# If you are interested to know more, please feel free to visit our report to see our project in detail!
+## If you are interested to know more about our project, please feel free to visit our report to see our work in detail!
