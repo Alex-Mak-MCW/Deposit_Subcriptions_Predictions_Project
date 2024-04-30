@@ -3,13 +3,13 @@
 This is a graduate course-level research project completed by Emily Au, Alex Mak, and Zheng En Than in MATH 509 (Data Structures and Platforms) at the University of Alberta. This project strives to predict whether bank clients will subscribe to term deposit subscriptions through tree-based machine-learning classifier models (Decision Tree, Random Forest, and XGBoost).
 
 ## 1. Project Task
-* Utilize tree-based machine-learning models to predict whether a client will subscribe to a term deposit through direct marketing campaigns.
+* We utilize tree-based machine-learning models to predict whether a client will subscribe to a term deposit through direct marketing campaigns.
 
 
 ## 2. Project Objective
-1. The significant factors influencing a potential client's decision to subscribe to a term deposit
-2. The predictive accuracy of our classifier models in forecasting subscription outcomes
-3. The predictive performance impact of utilizing bagging and boosting techniques on tree-based machine-learning models
+1. Identifying the significant factors influencing a potential client's decision to subscribe to a term deposit
+2. Determine the predictive accuracy of our classifier models in forecasting subscription outcomes
+3. Observe the predictive performance impact of utilizing bagging and boosting techniques on tree-based machine-learning models
 
 
 ## 3. Project Structure
@@ -18,7 +18,7 @@ This is a graduate course-level research project completed by Emily Au, Alex Mak
 * Unmodified version of the report.
 
 ### Codebase: 
-* Entire codebase of the project (data preprocessing, feature engineering, predictive modeling, model evaluation, and data visualization).
+* Entire codebase of the project (including data preprocessing, feature engineering, predictive modeling, model evaluation, and data visualization).
 
 ### Data:
 * The dataset used in this project, both the raw and processed dataset.
@@ -31,10 +31,10 @@ This is a graduate course-level research project completed by Emily Au, Alex Mak
 * The fitted Model and their corresponding parameters after being trained in this project.
 
 ### Tableau Visualziations
-* Visualizations conducted within Tableau.
+* The visualizations conducted in Tableau.
 
 ### Visualisations
-* Visualizations conducted within Python and its corresponding library (matplotlib and seaborn).
+* The visualizations conducted within Python and its corresponding library (matplotlib and seaborn).
 
 ### Final Project Report
 * The finalized report of our project.
