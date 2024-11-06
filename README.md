@@ -86,7 +86,3 @@ streamlit run Deployment_Codebase.py
 - We would conduct more in-depth analysis, such as exploring any temporal patterns or clustering the data based on client demographics to provide deeper insights into customer behavior, ultimately helping banks devise more effective targeted marketing strategies.
 
 ## If you are interested to know more about our project, please feel free to visit our report to see our work in detail!
-
-```
-
-```
