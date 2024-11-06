@@ -143,15 +143,15 @@ def display_prediction(prediction):
     # Predict success case:
     if prediction[0] == 1:
         with col1:
-            st.image("success_icon.png", width=50)  # Use an icon for success
+            st.image("Visualizations/success_icon.png", width=50)  # Use an icon for success
         with col2:
-            st.write("### The marketing campaign will succeed!")
+            st.write("### The Marketing Campaign will Succeed!")
     # Predict failure case:
     elif prediction[0] == 0:
         with col1:
-            st.image("failure_icon.png", width=50)  # Use an icon for failure
+            st.image("Visualizations/failure_icon.png", width=50)  # Use an icon for failure
         with col2:
-            st.write("### The marketing campaign will fail.")
+            st.write("### The Marketing Campaign will Fail.")
 
 # Draft of the appliation
 st.title("Term Deposit Subscription Prediction Application")
