@@ -64,12 +64,20 @@ We have conducted the following steps in our project:
 | Random Forest | 91.88%            | 90.44%           | 1024                | ~ 20 Minutes    |
 | XGBoost       | 92.47%            | 91.17%           | 576                 | ~ 40 Minutes    |
 
-## 6. Project Critique
+## 6. Model Deployment
+
+- The optimized models implemented in this project are deployed in a streamlit web application!
+- Please clone this repo, then go to Code --> Model_Deployment, and enter the folloiwng command:
+
+```bash
+streamlit run Deployment_Codebase.py
+
+## 7. Project Critique
 
 - Ensemble methods (in Random forest and XGBoost) can be more complex than Decision Tree, making it challenging to interpret the reasoning behind each prediction.
 - Limited generalizability as the dataset consists of data from a Portuguese bank and its specific marketing approach.
 
-## 7. Further Improvements & Investigation
+## 8. Further Improvements & Investigation
 
 - We would like to re-examine this project with a different dataset, where it may come from another bank in the world with a different telemarketing campaign.
 - We are interested in further optimizing our tree-based machine learning models, but that also comes with the drawback of consuming additional computational resources.
@@ -77,3 +85,4 @@ We have conducted the following steps in our project:
 - We would conduct more in-depth analysis, such as exploring any temporal patterns or clustering the data based on client demographics to provide deeper insights into customer behavior, ultimately helping banks devise more effective targeted marketing strategies.
 
 ## If you are interested to know more about our project, please feel free to visit our report to see our work in detail!
+```
