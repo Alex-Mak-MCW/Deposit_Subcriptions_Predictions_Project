@@ -65,29 +65,50 @@ def main():
       
     # here we define some of the front end elements of the web page like  
     # the font and background color, the padding and the text to be displayed 
-    html_temp = """ 
-    <div style ="background-color:yellow;padding:13px"> 
-    <h1 style ="color:black;text-align:center;">Term Deposit Subscription Prediction ML App (Decision Tree)</h1> 
-    </div> 
+    html_temp = """
+    <div style="background-color:yellow; padding:13px;">
+        <h1 style="color:black; text-align:center;">Term Deposit Subscription Prediction ML App (Decision Tree)</h1>
+    </div>
     """
       
     # this line allows us to display the front end aspects we have  
     # defined in the above code 
     st.markdown(html_temp, unsafe_allow_html = True) 
+
+    # User input fields for required features
+    st.subheader("Please enter the following information:")
       
     # the following lines create text boxes in which the user can enter  
     # the data required to make the prediction 
-    age = st.text_input("Age:", "Type Here") 
+    # age = st.text_input("Age (18-65):", "Type Here") 
+    # age = st.number_input("Age (18-65):", min_value=18, max_value=65) 
+    age = st.slider("Age (18-65):", min_value=18, max_value=65, value=42) 
     # education = st.text_input("Education:", "Type Here") 
     # default = st.text_input("Default:", "Type Here") 
-    balance = st.text_input("Balance:", "Type Here") 
+    # balance = st.text_input("Bank account balance:", "Type Here")
+    balance = st.number_input("Bank account balance (0-100000000):", min_value=0, max_value=100000000, value=10000)
     # housing = st.text_input("Housing:", "Type Here")
     # loan = st.text_input("Loan:", "Type Here")
-    duration = st.text_input("Duration:", "Type Here")
-    campaign = st.text_input("Campaign:", "Type Here")
-    pdays = st.text_input("Pdays:", "Type Here")
+    # duration = st.text_input("Duration of your last campaign (in hours)", "Type Here")
+    duration = st.slider("Duration of your last campaign (in minutes)", min_value=0, max_value=300, value=15)
+
+    campaign = st.slider("How many times did we contact you?", min_value=0, max_value=15, value=0)
+    pdays = st.slider("How many days ago was your last contacted by us?", min_value=0, max_value=1000, value=0)
     # previous = st.text_input("Previous:", "Type Here")
-    poutcome = st.text_input("Poutcome:", "Type Here")
+    # poutcome = st.text_input("Poutcome:", "Type Here")
+
+    # pdays = st.selectbox("Pdays:", [0, 1], index=0)  # Default value is 0
+    poutcome = st.selectbox("Outcome of your last campaign?", ["Failure", "Unknown", "Success"], index=1)  # Default value is 0
+
+    print(poutcome)
+    if poutcome=="Failure":
+        poutcome=0
+    elif poutcome=="Unknown":
+        poutcome=0.5
+    elif poutcome=="Success":
+        poutcome=1
+
+
     # contact_cellular = st.text_input("Contact Cellular:", "Type Here")
     # contact_telephone = st.text_input("Contact Telephone:", "Type Here")
     # marital_divorced = st.text_input("Marital Divorced:", "Type Here")
@@ -105,7 +126,7 @@ def main():
     # job_technician = st.text_input("Job Technician:", "Type Here")
     # job_unemployed = st.text_input("Job Unemployed:", "Type Here")
     # job_unknown = st.text_input("Job Unknown:", "Type Here")
-    days_in_year = st.text_input("Days in Year:", "Type Here")
+    days_in_year = st.slider("Number of Days in a Year:", min_value=0, max_value=365, value=150)
     
 
     result ="" 
@@ -122,18 +143,44 @@ def main():
     #    job_management, job_retired, job_self_employed,
     #    job_services, job_student, job_technician, job_unemployed,
     #    job_unknown, days_in_year) 
-
-    if st.button("Predict"):
-        result=prediction(age, balance, duration, campaign, pdays, poutcome, days_in_year)
     
-    # print(result[0])
-    # print(type(result))
-        if result[0]== 1:
-            msg='The marketing campaign will:\nsucceed! (Output=1)'
-            st.success(msg)  
-        elif result[0]== 0:
-            msg='The marketing campaign will:\nfail! (Output=0)' 
-            st.success(msg) 
+    # Predict button to trigger the prediction
+    if st.button("Predict"):
+        # Ensure all inputs are numeric where appropriate
+        try:
+            age = float(age)
+            balance = float(balance)
+            duration = float(duration)
+            duration*=60
+            print(duration)
+            campaign = float(campaign)
+            days_in_year = float(days_in_year)
+
+            # Make the prediction using the input values
+            result = prediction(age, balance, duration, campaign, pdays, poutcome, days_in_year)
+
+            # Display success or failure based on the prediction result
+            if result[0] == 1:
+                msg = 'The marketing campaign will: \nSucceed! (Output=1)'
+                st.success(msg)
+            elif result[0] == 0:
+                msg = 'The marketing campaign will: \nFail! (Output=0)'
+                st.success(msg)
+
+        except ValueError:
+            st.error("Please enter valid numeric values for all fields!")
+
+    # if st.button("Predict"):
+    #     result=prediction(age, balance, duration, campaign, pdays, poutcome, days_in_year)
+    
+    # # print(result[0])
+    # # print(type(result))
+    #     if result[0]== 1:
+    #         msg='The marketing campaign will:\nsucceed! (Output=1)'
+    #         st.success(msg)  
+    #     elif result[0]== 0:
+    #         msg='The marketing campaign will:\nfail! (Output=0)' 
+    #         st.success(msg) 
 
     # st.success(msg)  
 
