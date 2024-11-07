@@ -73,6 +73,20 @@ We have conducted the following steps in our project:
 streamlit run Deployment_Codebase.py
 ```
 
+- The following screenshots are what the app looks like when it's deployed.
+
+- Initialization
+
+![Screenshot 1](Code/Model_Deployment/Visualizations/Screenshot.png)
+
+- Successful Prediction
+
+![Screenshot 2](Code/Model_Deployment/Visualizations/success_prediction.png)
+
+- Failed Prediction
+
+![Screenshot 3](Code/Model_Deployment/Visualizations/failed_prediction.png)
+
 ## 7. Project Critique
 
 - Ensemble methods (in Random forest and XGBoost) can be more complex than Decision Tree, making it challenging to interpret the reasoning behind each prediction.
