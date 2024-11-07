@@ -73,7 +73,7 @@ We have conducted the following steps in our project:
 streamlit run Deployment_Codebase.py
 ```
 
-- The following screenshots are what the app looks like when it's deployed.
+The following screenshots are what the app looks like when it's deployed.
 
 - Initialization
 
