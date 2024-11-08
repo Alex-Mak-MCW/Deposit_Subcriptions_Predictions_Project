@@ -60,9 +60,9 @@ We have conducted the following steps in our project:
 
 | Model         | Training Accuracy | Testing Accuracy | Tuning Combinations | Compuation Time |
 | ------------- | ----------------- | ---------------- | ------------------- | --------------- |
-| Decision Tree | 89.95%            | 89.98%           | 2592                | ~ 10 Minutes    |
-| Random Forest | 91.88%            | 90.44%           | 1024                | ~ 20 Minutes    |
-| XGBoost       | 92.47%            | 91.17%           | 576                 | ~ 40 Minutes    |
+| Decision Tree | 86.76%            | 89.04%           | 2592                | ~ 10 Minutes    |
+| Random Forest | 91.49%            | 90.22%           | 1024                | ~ 20 Minutes    |
+| XGBoost       | 92.38%            | 91.00%           | 576                 | ~ 40 Minutes    |
 
 ## 6. Model Deployment
 
