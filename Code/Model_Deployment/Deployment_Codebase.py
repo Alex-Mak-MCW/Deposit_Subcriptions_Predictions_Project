@@ -5,6 +5,8 @@ import datetime
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
+import pandas as pd
+import plotly.graph_objects as go
 
 # Load machine models built earlier
 with open('../../Model/DT_Model_Deploy.pkl', 'rb') as file:
@@ -159,6 +161,7 @@ st.subheader(" ")
 
 # Create tabs for different model
 tabs = st.tabs(["Decision Tree", "Random Forest", "Extreme Gradient Boosting Trees (XGBoost)"])
+# tabs = st.tabs(["Decision Tree", "Random Forest", "Extreme Gradient Boosting Trees (XGBoost)", "Interactive Dashboard"])
 
 # In the decision tree model tab
 with tabs[0]:
@@ -211,3 +214,70 @@ with tabs[2]:
             display_prediction(prediction)
         except ValueError:
             st.error("Please enter valid numeric values for all fields!")
+
+# # Dashboard
+# with tabs[3]:
+#     # header and subheader
+#     st.header("Interactive Dashboard (PROTOTYPE)")
+#     st.subheader("Feel Free Adjust anything!")
+
+#     # load processed data
+#     data=pd.read_csv("https://raw.githubusercontent.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/refs/heads/main/Data/processed_Input.csv")
+
+#     # test KPIs
+#     # success_rate=
+
+#     # Display the numbered list in columns
+#     # Define KPI columns
+#     col1, col2, col3, col4, col5 = st.columns(5)
+
+#     # factors (col1)
+#     factors=["Campaign Duration", "Client Balance", "Time in a Year", "Age"]
+
+#     # Create a numbered list string
+#     factor_string = "\n".join([f"{i+1}. {factor}" for i, factor in enumerate(factors)])
+#     col1.write("Key factors impacting the campaign outcome:\n" + factor_string)
+
+#     # Average campaign duration (col2)
+#     avg_duration=str(int(data['duration'].mean().round()))
+#     col2.write("Average Campaign Duration:\n"+avg_duration+ " Seconds")
+
+#     # Average Previous contacted days (col3)
+#     avg_pdays=str(int(data['pdays'].mean().round()))
+#     col3.write("Average Previously Contacted Time:\n"+avg_pdays+ " Days")
+
+#     # Average Previous contacted days (col4)
+#     success_rate=str(round(data[data['y']==1].shape[0]/data.shape[0]*100,2))
+#     col4.write("Success Rate:\n"+success_rate+"%")
+
+#     # Proportion of previous contact (col5)
+#     first_time_rate=str(round(data[data['previous']==0].shape[0]/data.shape[0]*100,2)) 
+#     col5.write("Proportion of First Contact:\n"+first_time_rate+"%")
+
+#     # Bar plot of pcontact ('contact_cellular', 'contact_telephone')
+#     fig=go.Figure()
+#     fig.add_trace(go.Bar(
+#         # x=data['contact_cellular'],
+#         y=data['contact_cellular'],
+#         name='cellular',
+#         marker_color='blue'
+#     ))
+#     fig.add_trace(go.Bar(
+#         # x=data['contact_telephone'],
+#         y=data['contact_telephone'],
+#         name='telephone',
+#         marker_color='red'
+#     ))
+#     fig.update_layout(
+#         barmode='group',
+#         title='cellular vs telephone',
+#         xaxis_title='Contact Type',
+#         yaxis_title='Values'
+#     )
+
+#     st.plotly_chart(fig)
+
+
+
+
+
