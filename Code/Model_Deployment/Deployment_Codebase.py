@@ -228,7 +228,7 @@ with tabs[2]:
 #     # success_rate=
 
 #     # Display the numbered list in columns
-#     # Define KPI columns
+#     # Define KPI columns (WORKS)
 #     col1, col2, col3, col4, col5 = st.columns(5)
 
 #     # factors (col1)
