@@ -5,6 +5,59 @@ import pandas as pd
 import plotly.graph_objects as go
 from streamlit_option_menu import option_menu
 
+st.set_page_config(
+    page_title="Bank Term Deposit App", 
+    layout="wide"
+)
+
+st.markdown(
+    """
+    <style>
+        /* make any st.metric container use the sidebar bg */
+        [data-testid="stMetric"] {
+            background-color: var(--sidebar-background) !important;
+            padding: 1rem 1.5rem !important;
+            border-radius: 0.75rem !important;
+        }
+
+        [data-testid="stMetric"] {
+            background-color: #393939;
+            text-align: center;
+            padding: 15px 0;
+        }
+
+        [data-testid="stMetricLabel"] {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        [data-testid="stMetricDeltaIcon-Up"] {
+            position: relative;
+            left: 38%;
+            -webkit-transform: translateX(-50%);
+            -ms-transform: translateX(-50%);
+            transform: translateX(-50%);
+        }
+        [data-testid="stMetricDeltaIcon-Down"] {
+            position: relative;
+            left: 38%;
+            -webkit-transform: translateX(-50%);
+            -ms-transform: translateX(-50%);
+            transform: translateX(-50%);
+        }
+
+        div[data-testid="stPlotlyChart"] {
+            background-color: var(--sidebar-background) !important;
+            padding: 1rem !important;
+            border-radius: 0.75rem !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # --- CACHED RESOURCE LOADING ---
 @st.experimental_memo
 def load_models():
@@ -250,6 +303,10 @@ def display_prediction(prediction):
 
 # --- PAGE FUNCTIONS ---
 
+def home_page():
+    st.header("HOME PAGE")
+    st.subheader("TBA")
+
 def prediction_page(models):
     st.header("Predicting Term Deposit Subscription")
     st.markdown("---")
@@ -277,19 +334,111 @@ def prediction_page(models):
 
 def dashboard_page(data):
     st.header("Interactive Dashboard")
-    st.subheader("Explore key metrics and visualizations")
+    # st.subheader("Explore key metrics and visualizations")
+
+    def kpi_indicator(label, value, suffix="", width=1):
+        fig = go.Figure(go.Indicator(
+            mode="number",
+            value=value,                              # must be numeric
+            title={"text": label, "font": {"size": 20}},
+            number={
+                "font": {"size": 60},
+                "suffix": suffix                       # show the % sign here
+            },
+            domain={"x": [0, 1], "y": [0, 1]}
+        ))
+        fig.update_layout(
+            margin={"l": 0, "r": 0, "t": 0, "b": 0},
+            height=150
+        )
+        return fig
+
+    # KPIs
+    k1, k2, k3, k4, k5 = st.columns(5, gap="medium")
+    with k1:
+        persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
+        # Time Range Slider
+        selected_date = st.slider(
+            "Time Range",
+            min_value=datetime.date(2021, 1, 1),
+            max_value=datetime.date(2021, 12, 31),
+            value=(datetime.date(2021, 1, 1),datetime.date(2021, 12, 31))
+        )
+    with k2.container():
+        st.markdown("<br>", unsafe_allow_html=True)
+        k2_fig = kpi_indicator("Avg Duration (s)", int(data['duration'].mean().round()))
+        st.plotly_chart(k2_fig, use_container_width=True)
+        
+    with k3.container():
+        st.markdown("<br>", unsafe_allow_html=True)
+        k3_fig = kpi_indicator("Avg Previous Days", int(data['pdays'].mean().round()))
+        st.plotly_chart(k3_fig, use_container_width=True)
+        # st.metric("Avg Duration (s)", int(data['duration'].mean()), delta=None)
+
+    with k4.container():
+        st.markdown("<br>", unsafe_allow_html=True)
+        k4_fig = kpi_indicator("Success Rate", round(data['y'].mean() * 100,2), suffix="%")
+        st.plotly_chart(k4_fig, use_container_width=True)
+
+    with k5.container():
+        st.markdown("<br>", unsafe_allow_html=True)
+        k5_fig = kpi_indicator("First Contact %", round((data['previous']==0).mean()*100,2), suffix="%")
+        st.plotly_chart(k5_fig, use_container_width=True)
+        
+    # k4.metric("Success Rate", f"{round(data['y'].mean() * 100,2)}%")
+    # k5.metric("First Contact %", f"{round((data['previous']==0).mean()*100,2)}%")
+
+    st.markdown("---")
+
+    # Bottom row of 3 panels
+    # left, center, right = st.columns((1, 3, 2), gap="medium")
+    # with left:
+    #     st.subheader("Filters")
+    #     # your filter widgets here
+    # with center:
+    #     st.subheader("Main Chart")
+    #     st.plotly_chart(main_fig, use_container_width=True)
+    # with right:
+    #     st.subheader("Details")
+    #     st.dataframe(detail_df, use_container_width=True)
+
+
     # Example KPI cards
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Avg Duration (s)", int(data['duration'].mean().round()))
-    col2.metric("Avg Previous Days", int(data['pdays'].mean().round()))
-    col3.metric("Success Rate", f"{round(data['y'].mean() * 100,2)}%")
-    col4.metric("First Contact %", f"{round((data['previous']==0).mean()*100,2)}%")
+    # col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4 = st.columns((1.5, 4, 2, 2))
+
+    # with col1:
+    #     persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
+    #     # start_date = st.date_input("Start date", ...)
+    #     # end_date   = st.date_input("End date", ...)
+    #     channel    = st.selectbox("Contact channel", ["all","cellular","telephone"])
+
+
+
+
+    # col = st.columns((1.5, 4.5, 2), gap='medium')
+    # # col1.metric("Avg Duration (s)", int(data['duration'].mean().round()))
+    # col2.metric("Avg Previous Days", int(data['pdays'].mean().round()))
+    # col3.metric("Success Rate", f"{round(data['y'].mean() * 100,2)}%")
+    # col4.metric("First Contact %", f"{round((data['previous']==0).mean()*100,2)}%")
     # Example bar chart
     fig = go.Figure()
     fig.add_bar(x=['Cellular','Telephone'],
                 y=[data['contact_cellular'].sum(), data['contact_telephone'].sum()])
     fig.update_layout(title="Contacts by Channel", xaxis_title="Channel", yaxis_title="Count")
     st.plotly_chart(fig)
+
+def overview_page(data):
+    st.header("OVERVIEW PAGE")
+    st.subheader("TBA")
+
+def export_page(data):
+    st.header("EXPORT PAGE")
+    st.subheader("TBA")
+
+def acknowledgement_page(data):
+    st.header("ACKNOWLEDGEMENT PAGE")
+    st.subheader("TBA")
 
 # --- MAIN APP ---
 
@@ -343,10 +492,18 @@ def main():
     models = load_models()
     data   = load_data()
 
-    if choice == "Deposit Subscription Prediction":
+    if choice == "Home":
+        home_page()
+    elif choice == "Deposit Subscription Prediction":
         prediction_page(models)
-    else:
+    elif choice == "Interactive Dashboard":
         dashboard_page(data)
+    elif choice == "Data Overview":
+        overview_page(data)
+    elif choice ==  "Data Export":
+        export_page(data)
+    elif choice == "Acknowledgements":
+        acknowledgement_page(data)
 
 if __name__ == "__main__":
     main()
