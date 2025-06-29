@@ -42,6 +42,31 @@ def make_prediction(model, user_input):
 
 # Define separate input forms for each model
 def user_input_form_decision_tree():
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader('"Tree-based model that makes decisions by splitting data recursively on feature values"')
+
+    # 1) Build the pros/cons table
+    dt_pros_cons_df = pd.DataFrame({
+        "Strengths:": [
+            "🔍  Highly Interpretable",
+            "🧩  Can Handle Mixed Data",
+            "🛡️  Robust to outliers"
+        ],
+        "Weaknesses:": [
+            "⚠️  Prone to Overfitting",
+            "📉  High variance",
+            "🌪️  Instability"
+        ]
+    })
+    dt_pros_cons_df.index = [1, 2, 3]
+    # dt_pros_cons_df.index = [''] * len(dt_pros_cons_df)
+    # 2) Display it at the top
+    st.table(dt_pros_cons_df)            # static table :contentReference[oaicite:12]{index=12}
+    # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
+    # st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.subheader("Fill in The Customer's Values:")
+
 
     # Calculate the current day of the year for days_in_year
     day_of_year = datetime.datetime.now().timetuple().tm_yday
@@ -75,6 +100,32 @@ def user_input_form_decision_tree():
     return [age, balance, duration, campaign, pdays, poutcome, days_in_year]
 
 def user_input_form_random_forest():
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader('"Decision Tree Model, but Made Decisions with 100 Trees"')
+
+    # 1) Build the pros/cons table
+    rf_pros_cons_df = pd.DataFrame({
+        "Pros": [
+            "🌲  Less Likely to Overfit",
+            "📊  Handles High-dimensional Data Well",
+            "🛡️  Robust to Noise & Outliers"
+        ],
+        "Cons": [
+            "🔍  Less Interpretable than Decision Tree",
+            "💾  Higher Memory Usage",
+            "🐢  Slower Predictions"
+        ]
+    })
+    # rf_pros_cons_df.index = [''] * len(rf_pros_cons_df)
+    rf_pros_cons_df.index = [1, 2, 3]
+    # 2) Display it at the top
+    st.table(rf_pros_cons_df)            # static table :contentReference[oaicite:12]{index=12}
+    # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
+    # st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.subheader("Fill in The Customer's Values:")
+
 
     # Get current date
     day_of_year = datetime.datetime.now().timetuple().tm_yday
@@ -108,6 +159,32 @@ def user_input_form_random_forest():
     return [age, balance, duration, campaign, pdays, poutcome, days_in_year]
 
 def user_input_form_xgboost():
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader('"A tree that Learns from its 100 Ancestors to Make Rules."')
+
+    # 1) Build the pros/cons table
+    xgb_pros_cons_df = pd.DataFrame({
+        "Pros": [
+            "⚡  Most Powerful",
+            "🔧  Self Correcting & Tuning",
+            "☁️  Handles Missing Values Natively"
+        ],
+        "Cons": [
+            "👓  Least Interpretable",
+            "⏳  Longer Training Ttimes",
+            "🛠️  Harder to Optimize"
+        ]
+    })
+    xgb_pros_cons_df.index = [''] * len(xgb_pros_cons_df)
+    xgb_pros_cons_df.index = [1, 2, 3]
+    # 2) Display it at the top
+    st.table(xgb_pros_cons_df)            # static table :contentReference[oaicite:12]{index=12}
+    # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
+    # st.markdown("<br><br>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.subheader("Fill in The Customer's Values:")
+
 
     # Get the current date
     day_of_year = datetime.datetime.now().timetuple().tm_yday
@@ -174,11 +251,14 @@ def display_prediction(prediction):
 # --- PAGE FUNCTIONS ---
 
 def prediction_page(models):
-    st.header("Term Deposit Subscription Prediction")
+    st.header("Predicting Term Deposit Subscription")
+    st.markdown("---")
+    # st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader("Choose an AI model to make predictions!")
     tabs = st.tabs(list(models.keys()))
     for tab, (name, model) in zip(tabs, models.items()):
         with tab:
-            st.subheader(f"{name} Model")
+            # st.subheader(f"{name} Model")
             # Dispatch to the right input form
             if name == 'Decision Tree':
                 inputs = user_input_form_decision_tree()
@@ -214,8 +294,7 @@ def dashboard_page(data):
 # --- MAIN APP ---
 
 def main():
-    st.title("Bank Term Deposit App")
-
+    # st.title("Bank Term Deposit App")
     with st.sidebar:
         # title
         st.title("Deposit Subscription Prediction Data Science Project")
@@ -249,7 +328,7 @@ def main():
             orientation="vertical"
         )
 
-        print(choice)
+        # print(choice)
 
         # --- Help & feedback ---
         with st.expander("❓ Help & Docs"):
