@@ -437,8 +437,20 @@ def export_page(data):
     st.subheader("TBA")
 
 def acknowledgement_page(data):
-    st.header("ACKNOWLEDGEMENT PAGE")
-    st.subheader("TBA")
+    # st.header("ACKNOWLEDGEMENT PAGE")
+    # st.subheader("TBA")
+    st.header("Acknowledgements")
+    st.markdown("---")
+    ack_html = """
+    First of all, this entire application comes from a graudate data science course project where my teammates **Zheng En Than** and **Emily Au**. We cleaned the collected data, 
+    performed exploratory data analysis, and developed the machine learning models. I sincerely thank them for their effort and hard work. 
+    I would also like to thank my course instructor **Dr. Jay Newby** for his guidance and mentorship.
+    <br><br>
+    Additionally, I want to acknowledge **Sérgio Moro**, **P. Cortez**, and **P. Rita** for sharing the UCI ML Bank Telemarketing Dataset which is the fundament backbomne of this project.
+    <br><br>
+    Last but not least, shout out to the user test group [TEMP NAMES]. Their opinions and feedback on this project should be recognized.
+    """
+    st.markdown(ack_html, unsafe_allow_html=True)
 
 # --- MAIN APP ---
 
@@ -482,7 +494,7 @@ def main():
         # --- Help & feedback ---
         with st.expander("❓ Help & Docs"):
             st.write("- [User Guide](https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project)")
-            st.write("- [Source Code](#)")
+            st.write("- [Source Code](https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/tree/main/Code)")
             st.write("- [Contact Us](https://www.linkedin.com/in/alex-mak-824187247/)")
         
         st.caption("© 2025 Alex Mak, All Rights Reserved")
