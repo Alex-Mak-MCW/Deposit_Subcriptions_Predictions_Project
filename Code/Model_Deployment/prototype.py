@@ -304,8 +304,43 @@ def display_prediction(prediction):
 # --- PAGE FUNCTIONS ---
 
 def home_page():
-    st.header("HOME PAGE")
-    st.subheader("TBA")
+    st.header("Welcome to the [Term Deposit Subscription Prediction App]!")
+    st.markdown("---")
+    home_html = """
+        This app adopts data science and machine learning methodologies in the finance sector. With the following functionalities:
+        <br><br>
+        1. **Deposit Subscription Prediction**  
+
+            Use our fine-tuned ML model to predict whether a client will subscribe!
+        2. **Interactive Dashboard**  
+
+            Uncover data-driven and hidden trends as well as insights!
+        
+        3. **Data Overview**  
+        
+            No time to dig through the data? Just read our summary here!
+        
+        4. **Data Export**  
+        
+            Download our preprocessed data as you wish! We won't ask for your tip. We promise :)
+        <br><br>
+        Hope you have fun playing around with it! If you get stuck or spot any bugs, let me know!
+
+        — Alex :)
+    """
+    # st.markdown(home_html, unsafe_allow_html=True)
+    # create two columns: left is text, right is image
+    col1, col2 = st.columns([3, 2], gap="large")
+
+    with col1:
+        # render your HTML or Markdown
+        st.markdown(home_html, unsafe_allow_html=True)
+
+    with col2:
+        # swap in your own image path
+        st.image("Visualizations/title_icon_temp.gif",
+                 caption="Me vibing when I am building this project",
+                 use_column_width=True)
 
 def prediction_page(models):
     st.header("Predicting Term Deposit Subscription")
