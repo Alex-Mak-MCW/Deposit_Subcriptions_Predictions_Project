@@ -4,6 +4,7 @@ import datetime
 import pandas as pd
 import plotly.graph_objects as go
 from streamlit_option_menu import option_menu
+import io
 
 st.set_page_config(
     page_title="Bank Term Deposit App", 
@@ -467,9 +468,106 @@ def overview_page(data):
     st.header("OVERVIEW PAGE")
     st.subheader("TBA")
 
-def export_page(data):
-    st.header("EXPORT PAGE")
-    st.subheader("TBA")
+def export_page(data, preprocessed):
+    st.header("Data Export")
+    st.markdown("Choose which dataset you’d like to download: MORE DATA TYPE WILL BE PROVIDED")
+    
+    # two equal-width columns
+    col1, col2 = st.columns(2, gap="small")
+    
+    # Raw data box
+    with col1.container():
+        st.subheader("Raw Data")
+        # st.write("This is the original, unprocessed dataset as ingested.")
+        # CSV bytes
+        data_csv = data.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Download Raw Data (.csv)",
+            data=data_csv,
+            file_name="raw_data.csv",
+            mime="text/csv"
+        )
+        # # XLSX via xlsxwriter
+        # buffer = io.BytesIO()
+        # with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        #     data.to_excel(writer, index=False, sheet_name="Raw")
+        # buffer.seek(0)
+        # st.download_button(
+        #     "📥 Download Raw XLSX",
+        #     data=buffer,
+        #     file_name="raw_data.xlsx",
+        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        # )
+        # XLSX bytes
+        buffer = io.BytesIO()
+        data.to_excel(buffer, index=False, sheet_name="raw", engine="openpyxl")
+        buffer.seek(0)
+        st.download_button(
+            label="📥 Download Raw Data in Excel (.xlsx)",
+            data=buffer,
+            file_name="raw_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        st.markdown("---")
+        st.write("This is the original, unprocessed dataset.")
+    
+    # Preprocessed data box
+    with col2.container():
+        st.subheader("Preprocessed Data")
+        # st.write("This version has been cleaned and feature-engineered. Including:")
+        # # Numbered list of steps
+        # st.markdown(
+        #     """
+        #     1. Handled missing and duplicated data.
+        #     2. Data transfomration through different imputation, encoding, and other data techniques.
+        #     3. Anomaly detection & removal.
+        #     4. Feature engineering by modifying existing features and adding new features.
+        #     """
+        # )
+        # CSV bytes
+        pre_csv = preprocessed.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label="📥 Download Processed Data (.csv)",
+            data=pre_csv,
+            file_name="preprocessed_data.csv",
+            mime="text/csv"
+        )
+        # XLSX via xlsxwriter
+        # buffer2 = io.BytesIO()
+        # with pd.ExcelWriter(buffer2, engine="xlsxwriter") as writer:
+        #     preprocessed.to_excel(writer, index=False, sheet_name="Preprocessed")
+        # buffer2.seek(0)
+        # st.download_button(
+        #     "📥 Download Preprocessed XLSX",
+        #     data=buffer2,
+        #     file_name="preprocessed_data.xlsx",
+        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        # )
+        # XLSX bytes
+        buffer2 = io.BytesIO()
+        preprocessed.to_excel(buffer2, index=False, sheet_name="preprocessed", engine="openpyxl")
+        buffer2.seek(0)
+        st.download_button(
+            label="📥 Download Processed Data in Excel (.xlsx)",
+            data=buffer2,
+            file_name="preprocessed_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+        st.markdown("---")
+        st.write("This version has been cleaned and feature-engineered. Including:")
+        # Numbered list of steps
+        st.markdown(
+            """
+            1. Handled missing and duplicated data.
+            2. Data transfomration through different imputation, encoding, and other data techniques.
+            3. Anomaly detection & removal.
+            4. Feature engineering by modifying existing features and adding new features.
+            """
+        )
+
+    
 
 def acknowledgement_page(data):
     # st.header("ACKNOWLEDGEMENT PAGE")
@@ -539,6 +637,15 @@ def main():
     models = load_models()
     data   = load_data()
 
+    raw_data=pd.read_csv("https://raw.githubusercontent.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/refs/heads/main/Data/input.csv")
+
+    # url = (
+    #     "https://raw.githubusercontent.com/"
+    #     "Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/refs/heads/main/Data/processed_Input.csv"
+    # )
+    # return pd.read_csv(url)
+
+
     if choice == "Home":
         home_page()
     elif choice == "Deposit Subscription Prediction":
@@ -548,7 +655,7 @@ def main():
     elif choice == "Data Overview":
         overview_page(data)
     elif choice ==  "Data Export":
-        export_page(data)
+        export_page(raw_data, data)
     elif choice == "Acknowledgements":
         acknowledgement_page(data)
 
