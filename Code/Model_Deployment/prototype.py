@@ -275,15 +275,6 @@ def user_input_form_xgboost():
     # return input values in array
     return [housing, loan, duration, pdays, poutcome, marital_married, job_blue_collar, job_housemaid, days_in_year]
 
-# Prediction function to handle success/failure messages
-# def display_prediction(prediction):
-#     if prediction[0] == 1:
-#         msg = 'The marketing campaign will: \nSucceed! (Output=1)'
-#         st.success(msg)
-#     elif prediction[0] == 0:
-#         msg = 'The marketing campaign will: \nFail! (Output=0)'
-#         st.success(msg)
-
 def display_prediction(prediction):
     col1, col2 = st.columns([0.1, 0.9])
     # print(prediction) # for testing
@@ -464,11 +455,8 @@ def dashboard_page(data):
     fig.update_layout(title="Contacts by Channel", xaxis_title="Channel", yaxis_title="Count")
     st.plotly_chart(fig)
 
-def overview_page(data):
-    st.header("OVERVIEW PAGE")
-    st.subheader("TBA")
-
-def export_page(data, preprocessed):
+def overview_page(data, preprocessed):
+    
     st.header("Data Export")
     st.markdown("Choose which dataset you’d like to download: MORE DATA TYPE WILL BE PROVIDED")
     
@@ -487,17 +475,6 @@ def export_page(data, preprocessed):
             file_name="raw_data.csv",
             mime="text/csv"
         )
-        # # XLSX via xlsxwriter
-        # buffer = io.BytesIO()
-        # with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-        #     data.to_excel(writer, index=False, sheet_name="Raw")
-        # buffer.seek(0)
-        # st.download_button(
-        #     "📥 Download Raw XLSX",
-        #     data=buffer,
-        #     file_name="raw_data.xlsx",
-        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        # )
         # XLSX bytes
         buffer = io.BytesIO()
         data.to_excel(buffer, index=False, sheet_name="raw", engine="openpyxl")
@@ -515,16 +492,6 @@ def export_page(data, preprocessed):
     # Preprocessed data box
     with col2.container():
         st.subheader("Preprocessed Data")
-        # st.write("This version has been cleaned and feature-engineered. Including:")
-        # # Numbered list of steps
-        # st.markdown(
-        #     """
-        #     1. Handled missing and duplicated data.
-        #     2. Data transfomration through different imputation, encoding, and other data techniques.
-        #     3. Anomaly detection & removal.
-        #     4. Feature engineering by modifying existing features and adding new features.
-        #     """
-        # )
         # CSV bytes
         pre_csv = preprocessed.to_csv(index=False).encode("utf-8")
         st.download_button(
@@ -533,17 +500,6 @@ def export_page(data, preprocessed):
             file_name="preprocessed_data.csv",
             mime="text/csv"
         )
-        # XLSX via xlsxwriter
-        # buffer2 = io.BytesIO()
-        # with pd.ExcelWriter(buffer2, engine="xlsxwriter") as writer:
-        #     preprocessed.to_excel(writer, index=False, sheet_name="Preprocessed")
-        # buffer2.seek(0)
-        # st.download_button(
-        #     "📥 Download Preprocessed XLSX",
-        #     data=buffer2,
-        #     file_name="preprocessed_data.xlsx",
-        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        # )
         # XLSX bytes
         buffer2 = io.BytesIO()
         preprocessed.to_excel(buffer2, index=False, sheet_name="preprocessed", engine="openpyxl")
@@ -566,7 +522,6 @@ def export_page(data, preprocessed):
             4. Feature engineering by modifying existing features and adding new features.
             """
         )
-
     
 
 def acknowledgement_page(data):
@@ -615,8 +570,8 @@ def main():
 
         choice = option_menu(
             menu_title=None,
-            options=["Home", "Deposit Subscription Prediction", "Interactive Dashboard", "Data Overview", "Data Export", "Acknowledgements"],
-            icons=["house", "bank", "bar-chart-line", "table", "download", "award"],
+            options=["Home", "Deposit Subscription Prediction", "Interactive Dashboard", "Data Overview & Export", "Acknowledgements"],
+            icons=["house", "bank", "bar-chart-line", "table", "award"],
             menu_icon="app-indicator",
             default_index=0,
             orientation="vertical"
@@ -652,56 +607,10 @@ def main():
         prediction_page(models)
     elif choice == "Interactive Dashboard":
         dashboard_page(data)
-    elif choice == "Data Overview":
-        overview_page(data)
-    elif choice ==  "Data Export":
-        export_page(raw_data, data)
+    elif choice == "Data Overview & Export":
+        overview_page(raw_data, data)
     elif choice == "Acknowledgements":
         acknowledgement_page(data)
 
 if __name__ == "__main__":
     main()
-
-# def main():
-#     # — Sidebar as full nav panel —
-#     with st.sidebar:
-#         # 1) Logo
-#         st.image("Visualizations/logo.png", width=150)
-        
-#         # 2) Inline links
-#         st.markdown(
-#             "[Source code](https://github.com/your/repo) • "
-#             "[Evidently docs](https://docs.evidentlyai.com)",
-#             unsafe_allow_html=True
-#         )
-#         st.markdown("---")
-        
-#         # 3) Section headers + pickers
-#         st.markdown("### 📁 Select project")
-#         project = st.selectbox("", project_list, key="project")
-        
-#         st.markdown("### 📅 Select period")
-#         period = st.selectbox("", period_list, key="period")
-        
-#         st.markdown("### 📊 Select report")
-#         report = st.selectbox("", report_list, key="report")
-#         st.markdown("---")
-        
-#         # 4) Top-level navigation
-#         nav = st.radio(
-#             "Go to",
-#             ["Prediction", "Dashboard"],
-#             index=0,
-#             key="nav",
-#             label_visibility="collapsed"
-#         )
-    
-#     # Load once
-#     models = load_models()
-#     data   = load_data()
-    
-#     # Dispatch based on sidebar nav
-#     if st.session_state.nav == "Prediction":
-#         prediction_page(models)
-#     else:
-#         dashboard_page(data)
