@@ -361,7 +361,7 @@ def prediction_page(models):
 
 def dashboard_page(data):
     st.header("Interactive Dashboard")
-    # st.subheader("Explore key metrics and visualizations")
+    st.subheader("Choose your persona & explore key metrics and visualizations: ")
 
     def kpi_indicator(label, value, suffix="", width=1):
         fig = go.Figure(go.Indicator(
@@ -381,83 +381,89 @@ def dashboard_page(data):
         return fig
 
     # KPIs
-    k1, k2, k3, k4, k5 = st.columns(5, gap="medium")
+    k1, k2, k3, k4, k5 = st.columns(5, gap="small")
+
+    # checkbox selection to choose personas
     with k1:
         persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
         # Time Range Slider
-        selected_date = st.slider(
-            "Time Range",
-            min_value=datetime.date(2021, 1, 1),
-            max_value=datetime.date(2021, 12, 31),
-            value=(datetime.date(2021, 1, 1),datetime.date(2021, 12, 31))
-        )
+        # selected_date = st.slider(
+        #     "Time Range",
+        #     min_value=datetime.date(2021, 1, 1),
+        #     max_value=datetime.date(2021, 12, 31),
+        #     value=(datetime.date(2021, 1, 1),datetime.date(2021, 12, 31))
+        # )
+        st.metric("Most Important Factor: ", 'Call Duration')
+    # Display KPI 1 (conversion rate)
     with k2.container():
         st.markdown("<br>", unsafe_allow_html=True)
-        k2_fig = kpi_indicator("Avg Duration (s)", int(data['duration'].mean().round()))
+        k2_fig = kpi_indicator("Conversion Rate", round(data['y'].mean() * 100,2), suffix="%")
         st.plotly_chart(k2_fig, use_container_width=True)
+        # k2_fig = kpi_indicator("Avg Duration (s)", int(data['duration'].mean().round()))
+        # st.plotly_chart(k2_fig, use_container_width=True)
         
+    # Display KPI 2 (Avg. Balance of Converters)
     with k3.container():
         st.markdown("<br>", unsafe_allow_html=True)
-        k3_fig = kpi_indicator("Avg Previous Days", int(data['pdays'].mean().round()))
-        st.plotly_chart(k3_fig, use_container_width=True)
-        # st.metric("Avg Duration (s)", int(data['duration'].mean()), delta=None)
+        if persona=='Marketing Manager':
+            k3_fig = kpi_indicator("First-Time Conversion Rate", round(data[data['previous']==0]['y'].mean()* 100,2), suffix="%")
+            st.plotly_chart(k3_fig, use_container_width=True)
+        else:
+            k5_fig = kpi_indicator("Avg. Duration of Success (mins)", data[data['y']==1]['duration'].mean()/60)
+            st.plotly_chart(k5_fig, use_container_width=True)
 
+    # Display KPI 3 (First call Conversion Rate)
     with k4.container():
         st.markdown("<br>", unsafe_allow_html=True)
-        k4_fig = kpi_indicator("Success Rate", round(data['y'].mean() * 100,2), suffix="%")
+        k4_fig = kpi_indicator("First Contact %", round((data['previous']==0).mean()*100,2), suffix="%")
         st.plotly_chart(k4_fig, use_container_width=True)
 
+    # Display KPI 4 ()
     with k5.container():
         st.markdown("<br>", unsafe_allow_html=True)
-        k5_fig = kpi_indicator("First Contact %", round((data['previous']==0).mean()*100,2), suffix="%")
-        st.plotly_chart(k5_fig, use_container_width=True)
-        
-    # k4.metric("Success Rate", f"{round(data['y'].mean() * 100,2)}%")
-    # k5.metric("First Contact %", f"{round((data['previous']==0).mean()*100,2)}%")
+        if persona=='Marketing Manager':
+            k5_fig = kpi_indicator("Avg. Acct. Balance for Success", data[data['y']==1]['balance'].mean())
+            st.plotly_chart(k5_fig, use_container_width=True)
+        else:
+            k5_fig = kpi_indicator("Avg Past Success Rate:", round(data[data['y']==1]['poutcome'].mean()*100,2))
+            st.plotly_chart(k5_fig, use_container_width=True)
+
 
     st.markdown("---")
 
-    # Bottom row of 3 panels
-    # left, center, right = st.columns((1, 3, 2), gap="medium")
-    # with left:
-    #     st.subheader("Filters")
-    #     # your filter widgets here
-    # with center:
-    #     st.subheader("Main Chart")
-    #     st.plotly_chart(main_fig, use_container_width=True)
-    # with right:
-    #     st.subheader("Details")
-    #     st.dataframe(detail_df, use_container_width=True)
-
+    # So default is salesperson
+    if persona =="Salesperson":
+        st.write("You chose: ", persona)
 
     # Example KPI cards
     # col1, col2, col3, col4 = st.columns(4)
-    col1, col2, col3, col4 = st.columns((1.5, 4, 2, 2))
+    # col1, col2, col3, col4 = st.columns((1.5, 4, 2, 2))
 
-    # with col1:
-    #     persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
-    #     # start_date = st.date_input("Start date", ...)
-    #     # end_date   = st.date_input("End date", ...)
-    #     channel    = st.selectbox("Contact channel", ["all","cellular","telephone"])
+        # plots for a salesperson
+        # 1. plot for sales overtime?
+        # 2. plots for outcome per variable (w/select box)
+        # 3. conversion heatmap
+        # 4. sales-based recommendations
+        fig = go.Figure()
+        fig.add_bar(x=['Cellular','Telephone'],
+                    y=[data['contact_cellular'].sum(), data['contact_telephone'].sum()])
+        fig.update_layout(title="", xaxis_title="Channel", yaxis_title="Count")
+        st.plotly_chart(fig)
 
+    elif persona =="Marketing Manager":
+        st.write("You chose: ", persona)
 
+        # plots for a marketing manager
+        # 1. plot for sales overtime?
+        # 2. plots for outcome per variable (w/select box)
+        # 3. clusering plots for customers.
+        # 4. table (df)
+        # 5. marketing-based recommendations
 
-
-    # col = st.columns((1.5, 4.5, 2), gap='medium')
-    # # col1.metric("Avg Duration (s)", int(data['duration'].mean().round()))
-    # col2.metric("Avg Previous Days", int(data['pdays'].mean().round()))
-    # col3.metric("Success Rate", f"{round(data['y'].mean() * 100,2)}%")
-    # col4.metric("First Contact %", f"{round((data['previous']==0).mean()*100,2)}%")
-    # Example bar chart
-    fig = go.Figure()
-    fig.add_bar(x=['Cellular','Telephone'],
-                y=[data['contact_cellular'].sum(), data['contact_telephone'].sum()])
-    fig.update_layout(title="Contacts by Channel", xaxis_title="Channel", yaxis_title="Count")
-    st.plotly_chart(fig)
 
 def overview_page(data, preprocessed):
     
-    st.header("Data Export")
+    st.header("Data Overview & Export Page")
     st.markdown("Choose which dataset you’d like to download: MORE DATA TYPE WILL BE PROVIDED")
     
     # two equal-width columns
