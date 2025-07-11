@@ -9,6 +9,7 @@ import plotly.express as px
 import altair as alt
 from matplotlib_venn import venn2
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 st.set_page_config(
@@ -688,7 +689,128 @@ def dashboard_page(data):
         st.altair_chart(chart, use_container_width=True)
 
 
-    # conversion heatmap --> which pairs
+        # conversion heatmap --> which pairs
+
+        heatmap_data=data.copy()
+        # 1) Create your age_bin column (e.g. 5-year bins)
+        age_bins = list(range(18, 66, 5))
+        age_labels = [f"{b}-{b+5}" for b in age_bins[:-1]]
+        heatmap_data['age_bin'] = pd.cut(heatmap_data['age'], bins=age_bins, labels=age_labels, right=False)
+
+        duration_bins = list(range(0, 1200, 60))
+        duration_labels = [f"{b}-{b+60}" for b in duration_bins[:-1]]
+        heatmap_data['duration_bin'] = pd.cut(heatmap_data['duration'], bins=duration_bins, labels=duration_labels, right=False)
+
+        # 2) Pivot: rows = age_bin, cols = channel, values = mean subscription (y)
+        heatmap_df1 = heatmap_data.pivot_table(
+            index='age_bin',
+            columns='duration_bin',   # or 'contact_cellular' vs 'contact_telephone'
+            values='y',
+            aggfunc='mean'
+        )
+        # Convert NaN → 0 (if no samples in that bin/channel)
+        heatmap_df1 = heatmap_df1.fillna(0)
+
+
+        # Melt the pivot back to long form
+        hm_long1 = heatmap_df1.reset_index().melt(
+            id_vars='age_bin', 
+            var_name='duration_bin', 
+            value_name='y'
+        )
+
+        heatmap_chart1 = (
+            alt.Chart(hm_long1)
+            .mark_rect()
+            .encode(
+                x=alt.X("duration_bin:N", title="Duration Bin", sort=duration_labels),
+                y=alt.Y("age_bin:O", title="Age Bin", sort=labels[::-1]),
+                color=alt.Color("y:Q", title="y", scale=alt.Scale(scheme="blues")),
+                tooltip=[
+                alt.Tooltip("age_bin:O", title="Age Bin"),
+                alt.Tooltip("duration_bin:N", title="Duration Bin"),
+                alt.Tooltip("y:Q", title="y", format=".1%")
+                ]
+            )
+            .properties(width="container", height=400, title="Conversion Rate Heatmap")
+        )
+
+        st.altair_chart(heatmap_chart1, use_container_width=True)
+
+        ### Another chart
+
+        # 1) Create your age_bin column (e.g. 5-year bins)
+        age_bins = list(range(18, 66, 5))
+        age_labels = [f"{b}-{b+4}" for b in age_bins[:-1]]
+        heatmap_data['age_bin'] = pd.cut(heatmap_data['age'], bins=age_bins, labels=age_labels, right=False)
+
+        # duration_bins = list(range(0, 1200, 60))
+        # duration_labels = [f"{b}-{b+4}" for b in duration_bins[:-1]]
+        # heatmap_data['duration_bin'] = pd.cut(heatmap_data['duration'], bins=duration_bins, labels=duration_labels, right=False)
+
+        # Define conditions for each category
+        conditions = [
+            (heatmap_data["housing"] == 1) & (heatmap_data["loan"] == 1),   # both loans
+            (heatmap_data["housing"] == 0) & (heatmap_data["loan"] == 0),   # no loans
+            (heatmap_data["housing"] == 1) & (heatmap_data["loan"] == 0),   # housing only
+            (heatmap_data["housing"] == 0) & (heatmap_data["loan"] == 1)    # personal only
+        ]
+
+        # Corresponding labels
+        choices = [
+            "both_loans",
+            "no_loans",
+            "housing_loans",
+            "personal_loans"
+        ]
+
+        # Create the new column 'loans?' using np.select
+        heatmap_data["loans?"] = np.select(conditions, choices, default="unknown")
+
+
+        # 2) Pivot: rows = age_bin, cols = channel, values = mean subscription (y)
+        heatmap_df2 = heatmap_data.pivot_table(
+            index='loans?',
+            columns='duration_bin',   # or 'contact_cellular' vs 'contact_telephone'
+            values='y',
+            aggfunc='mean'
+        )
+        # Convert NaN → 0 (if no samples in that bin/channel)
+        heatmap_df2 = heatmap_df2.fillna(0)
+
+
+        # Melt the pivot back to long form
+        hm_long2 = heatmap_df2.reset_index().melt(
+            id_vars='loans?', 
+            var_name='duration_bin', 
+            value_name='y'
+        )
+
+        heatmap_chart2 = (
+            alt.Chart(hm_long2)
+            .mark_rect()
+            .encode(
+                x=alt.X("duration_bin:N", title="Duration Bin", sort=duration_labels),
+                y=alt.Y("loans?:O", title="Loan Type", sort=labels[::-1]),
+                color=alt.Color("y:Q", title="y", scale=alt.Scale(scheme="blues")),
+                tooltip=[
+                alt.Tooltip("loans?:O", title="Loan Type"),
+                alt.Tooltip("duration_bin:N", title="Duration Bin"),
+                alt.Tooltip("y:Q", title="y", format=".1%")
+                ]
+            )
+            .properties(width="container", height=400, title="Conversion Rate Heatmap")
+        )
+
+        st.altair_chart(heatmap_chart2, use_container_width=True)
+
+
+        # Sales-based recommendations
+
+        # TO BE ADDED
+
+
+
 
 
 
