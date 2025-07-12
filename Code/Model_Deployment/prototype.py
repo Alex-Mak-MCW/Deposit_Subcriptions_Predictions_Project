@@ -20,13 +20,13 @@ def daily_line_altair(df):
         df
         .groupby("days_in_year", as_index=False)["y"]
         .sum()
-        .rename(columns={"y": "count_of_y"})
+        .rename(columns={"y": "Contacts Made"})
     )
     # 2) Create a full index of days 1–364
     full = pd.DataFrame({"days_in_year": range(1, 365)})
     # 3) Left-merge and fill missing with 0
     merged = full.merge(day_counts, on="days_in_year", how="left")
-    merged["count_of_y"] = merged["count_of_y"].fillna(0)
+    merged["Contacts Made"] = merged["Contacts Made"].fillna(0)
 
     # 4) Chart that merged DataFrame
     chart = (
@@ -35,11 +35,51 @@ def daily_line_altair(df):
         .encode(
             x=alt.X("days_in_year:Q", title="Day of Year", scale=alt.Scale(domain=[1, 364]),   
                     axis=alt.Axis(tickMinStep=1)),
-            y=alt.Y("count_of_y:Q", title="Count of Y"),
-            tooltip=["days_in_year", "count_of_y"]
+            y=alt.Y("Contacts Made:Q", title="Contacts Made"),
+            tooltip=["days_in_year", "Contacts Made"]
         )
         .properties(width="container", height=300,
-                    title="Daily Count of Y (Days 1–364)")
+                    title="Daily Contacts Made Over a Year")
+    )
+    return chart
+
+def monthly_line_altair(df):
+    # 1) Aggregate by month
+    month_counts = (
+        df
+        .groupby("month", as_index=False)["y"]
+        .sum()
+        .rename(columns={"y": "Contacts Made"})
+    )
+    # 2) Ensure all 12 months appear
+    full_months = pd.DataFrame({"month": list(range(1,13))})
+    merged = (
+        full_months
+        .merge(month_counts, on="month", how="left")
+        .fillna(0)
+    )
+    # 3) Map to month names & make an ordered categorical
+    names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    merged["month_name"] = pd.Categorical(
+        [names[m-1] for m in merged["month"]],
+        categories=names,
+        ordered=True
+    )
+
+    # 4) Build the Altair chart
+    chart = (
+        alt.Chart(merged)
+          .mark_line(interpolate="linear", point=True)
+          .encode(
+            x=alt.X("month_name:O", title="Month"),
+            y=alt.Y("Contacts Made:Q", title="Contacts Made"),
+            tooltip=[alt.Tooltip("month_name:O", title="Month"),
+                     alt.Tooltip("Contacts Made:Q", title="Contacts Made")]
+          )
+          .properties(
+            width="container", height=300,
+            title="Monthly Contacts Made"
+          )
     )
     return chart
 
@@ -119,7 +159,7 @@ def contact_channel_pie(df, filter_col="y", filter_val=1):
     ))
     fig.update_traces(marker=dict(line=dict(width=1, color="white")))
     fig.update_layout(
-        title_text="Contact Channel Distribution",
+        title_text="Wins per Contact Channel (Count & Proportion in %)",
         showlegend=False
     )
     return fig
@@ -149,9 +189,9 @@ def plot_loan_venn(df, filter_col="y", filter_val=1, container_class="venn-conta
     v.get_patch_by_id('01').set_color('#EF553B')
     v.get_patch_by_id('11').set_color('#00CC96')
     # annotate “no loans” below
-    ax.text(0.5, -0.1, f"No Loans: {no_loans}",
+    ax.text(0.5, 0.5, f"No Loans: {no_loans}",
             ha="center", va="center", fontsize=12)
-    ax.set_title("Loan Ownership Overlap")
+    ax.set_title("Wins per Loan Ownership")
 
     return fig
 
@@ -216,7 +256,11 @@ def plot_age_duration_heatmap(df,
 
     # 2) Duration bins
     dur_bins   = list(range(dur_start, dur_end + dur_step, dur_step))
-    dur_labels = [f"{b}-{b+dur_step-1}" for b in dur_bins[:-1]]
+    # dur_labels = [f"{b}-{b+dur_step-1}" for b in dur_bins[:-1]]
+    dur_labels = [
+        f"{int(b/60)}–{int((b + dur_step)/60)}"
+        for b in dur_bins[:-1]
+    ]
     heatmap_data['duration_bin'] = pd.cut(
         heatmap_data['duration'],
         bins=dur_bins,
@@ -248,27 +292,26 @@ def plot_age_duration_heatmap(df,
         alt.Chart(hm_long)
           .mark_rect()
           .encode(
-            x=alt.X("duration_bin:N", title="Duration Bin", sort=dur_labels),
+            x=alt.X("duration_bin:N", title="Minutes", sort=dur_labels),
             y=alt.Y("age_bin:O",      title="Age Bin",      sort=age_labels[::-1]),
             color=alt.Color("conversion_rate:Q", 
                             title="Conversion Rate", 
                             scale=alt.Scale(scheme="blues")),
             tooltip=[
               alt.Tooltip("age_bin:O",        title="Age Bin"),
-              alt.Tooltip("duration_bin:N",   title="Duration"),
+              alt.Tooltip("duration_bin:N",   title="Minutes"),
               alt.Tooltip("conversion_rate:Q",title="Conversion Rate", format=".1%")
             ]
           )
           .properties(
             width="container", height=400,
-            title="Conversion Rate Heatmap (Age × Duration)"
+            title="Conversion Rate Heatmap (Age × Duration in Minutes)"
           )
     )
     return chart
 
 
-def plot_loans_duration_heatmap(df, 
-                                dur_start=0, dur_end=1200, dur_step=60):
+def plot_loans_duration_heatmap(df, dur_start=0, dur_end=1200, dur_step=60):
     """
     Returns an Altair heatmap of conversion rate (y) by loan category vs. duration bins.
     """
@@ -276,7 +319,11 @@ def plot_loans_duration_heatmap(df,
 
     # 1) Duration bins
     dur_bins   = list(range(dur_start, dur_end + dur_step, dur_step))
-    dur_labels = [f"{b}-{b+dur_step-1}" for b in dur_bins[:-1]]
+    # dur_labels = [f"{b}-{b+dur_step-1}" for b in dur_bins[:-1]]
+    dur_labels = [
+        f"{int(b/60)}–{int((b + dur_step)/60)}"
+        for b in dur_bins[:-1]
+    ]
     heatmap_data['duration_bin'] = pd.cut(
         heatmap_data['duration'],
         bins=dur_bins,
@@ -318,20 +365,20 @@ def plot_loans_duration_heatmap(df,
         alt.Chart(hm_long)
           .mark_rect()
           .encode(
-            x=alt.X("duration_bin:N", title="Duration Bin", sort=dur_labels),
+            x=alt.X("duration_bin:N", title="Minutes", sort=dur_labels),
             y=alt.Y("loans?:O",      title="Loan Type",     sort=choices),
             color=alt.Color("conversion_rate:Q", 
                             title="Conversion Rate", 
                             scale=alt.Scale(scheme="blues")),
             tooltip=[
               alt.Tooltip("loans?:O",        title="Loan Type"),
-              alt.Tooltip("duration_bin:N",  title="Duration"),
+              alt.Tooltip("duration_bin:N",  title="Minutes"),
               alt.Tooltip("conversion_rate:Q",title="Conversion Rate", format=".1%")
             ]
           )
           .properties(
             width="container", height=400,
-            title="Conversion Rate Heatmap (Loans × Duration)"
+            title="Conversion Rate Heatmap (Loans × Duration in Minutes)"
           )
     )
     return chart
@@ -770,7 +817,7 @@ def dashboard_page(data):
     st.markdown("---")
 
     # So default is salesperson
-    if persona =="Salesperson":
+    if persona =="Marketing Manager":
         st.write("You chose: ", persona)
 
         # --- Create our 2×2 grid ---
@@ -786,27 +833,39 @@ def dashboard_page(data):
         # 1. plot for sales overtime?
         # 1) Aggregate by month
 
+        # Sales-based recommendation
         with row1_col1:
-            st.title("Recommendations")
+            st.title("Marketing-based Recommendations:")
 
             st.markdown(
             """
-            1. TBA
-            2. TBA
-            3. TBA
-            4. TBA
+            1. Customers are more likely to subscribe on specific months (Mar, Aug, Nov, Dec).
+
+            2. Most customers are around in their early 30s to late 30s.
+
+            3. Conversion rate increases a lot when druation goes up, age doesn't play a huge factor.
+
+            4. Customers with no loans are more likely to subscribe in when the call was not long.
+
+            5. Most customers have cellular samples thus they may not have a lot of time --> need to develop strategies that can make them stay longer.
+
+            6. Over 50% of previous successful case still subscribes when we call, focus on these customers. 
             """
         )
 
+        # Works both Sales and Marketing
         with row1_col2:
-            st.subheader("Trend Over Time")
+            st.subheader("Campaign Trend Over Time")
             ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
             with ts_tab:
-                st.altair_chart(daily_line_altair(data), use_container_width=True)
+                # daily number of success over time plot
+                st.altair_chart(monthly_line_altair(data), use_container_width=True)
+                # st.altair_chart(daily_line_altair(data), use_container_width=True)
             with ms_tab:
+                # monthly succeess rate
                 st.altair_chart(monthly_success_altair(data), use_container_width=True)
     
-
+        # Works both Sales and Marketing
         with row2_col1:
             st.subheader("Outcome by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
@@ -821,7 +880,7 @@ def dashboard_page(data):
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
 
-
+        # Works both Sales and Marketing
         # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
             st.subheader("Distributions & Heatmaps")
@@ -842,15 +901,87 @@ def dashboard_page(data):
                 st.altair_chart(plot_loans_duration_heatmap(data), use_container_width=True)
 
 
-    elif persona =="Marketing Manager":
+    elif persona =="Salesperson":
         st.write("You chose: ", persona)
 
-        # plots for a marketing manager
+        # --- Create our 2×2 grid ---
+        row1_col1, row1_col2 = st.columns(2, gap="medium")
+        row2_col1, row2_col2 = st.columns(2, gap="medium")
+
+        # plots for a salesperson
         # 1. plot for sales overtime?
         # 2. plots for outcome per variable (w/select box)
-        # 3. clusering plots for customers.
-        # 4. table (df)
-        # 5. marketing-based recommendations
+        # 3. conversion heatmap 
+        # 4. sales-based recommendations
+
+        # 1. plot for sales overtime?
+        # 1) Aggregate by month
+
+        # Sales-based recommendation
+        with row1_col1:
+            st.title("Sales-based Recommendations (TO BE ADDED):")
+
+            st.markdown(
+            """
+            1. TBA
+
+            2. TBA
+
+            3. TBA
+
+            4. TBA
+
+            5. TBA
+
+            6. TBA. 
+            """
+        )
+
+        # Works both Sales and Marketing
+        with row1_col2:
+            st.subheader("Campaign Trend Over Time")
+            ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
+            with ts_tab:
+                # daily number of success over time plot
+                st.altair_chart(daily_line_altair(data), use_container_width=True)
+            with ms_tab:
+                # monthly succeess rate
+                st.altair_chart(monthly_success_altair(data), use_container_width=True)
+    
+        # Works both Sales and Marketing
+        with row2_col1:
+            st.subheader("Outcome by Channel & Loans")
+            contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
+            with contact_tab:
+                # Plot 3: contact type pie (Plotly)
+                contact_fig= contact_channel_pie(data)    
+                st.plotly_chart(contact_fig, use_container_width=True)
+            with loan_tab:
+                # Plot 4: loan Venn (matplotlib)
+                venn_fig = plot_loan_venn(data)
+                st.markdown('<div class="venn-container">', unsafe_allow_html=True)
+                st.pyplot(venn_fig)  
+                st.markdown('</div>', unsafe_allow_html=True)
+
+        # Works both Sales and Marketing
+        # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
+        with row2_col2:
+            st.subheader("Distributions & Heatmaps")
+            dist_tab, heat_tab, loan_heat_tab = st.tabs([
+                "Age KDE","Age×Duration Heatmap","Loan×Duration Heatmap"
+            ])
+
+            with dist_tab:
+                # Plot 5: age KDE (Altair)
+                st.altair_chart(kde_age_distribution(data), use_container_width=True)
+
+            with heat_tab:
+                # Plot 6: conversion heatmap by age & duration (Altair)
+                st.altair_chart(plot_age_duration_heatmap(data), use_container_width=True)
+
+            with loan_heat_tab:
+                # Plot 7: conversion heatmap by loan type & duration (Altair)
+                st.altair_chart(plot_loans_duration_heatmap(data), use_container_width=True)
 
 
 def overview_page(data, preprocessed):
