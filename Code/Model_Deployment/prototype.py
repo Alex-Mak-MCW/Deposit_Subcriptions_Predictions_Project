@@ -11,6 +11,333 @@ from matplotlib_venn import venn2
 import matplotlib.pyplot as plt
 import numpy as np
 
+# Helper functions
+def daily_line_altair(df):
+
+    df = df[df["days_in_year"] < 365]
+    # 1) Aggregate your raw counts
+    day_counts = (
+        df
+        .groupby("days_in_year", as_index=False)["y"]
+        .sum()
+        .rename(columns={"y": "count_of_y"})
+    )
+    # 2) Create a full index of days 1–364
+    full = pd.DataFrame({"days_in_year": range(1, 365)})
+    # 3) Left-merge and fill missing with 0
+    merged = full.merge(day_counts, on="days_in_year", how="left")
+    merged["count_of_y"] = merged["count_of_y"].fillna(0)
+
+    # 4) Chart that merged DataFrame
+    chart = (
+        alt.Chart(merged)
+        .mark_line(interpolate="linear", point=True)
+        .encode(
+            x=alt.X("days_in_year:Q", title="Day of Year", scale=alt.Scale(domain=[1, 364]),   
+                    axis=alt.Axis(tickMinStep=1)),
+            y=alt.Y("count_of_y:Q", title="Count of Y"),
+            tooltip=["days_in_year", "count_of_y"]
+        )
+        .properties(width="container", height=300,
+                    title="Daily Count of Y (Days 1–364)")
+    )
+    return chart
+
+def monthly_success_altair(df):
+    months = ["Jan","Feb","Mar","Apr","May","Jun",
+            "Jul","Aug","Sep","Oct","Nov","Dec"]
+
+    # 1) Shared transforms
+    base = (
+        alt.Chart(df)
+        .transform_calculate(
+            month_name=f"['" + "','".join(months) + f"'][datum.month - 1]"
+        )
+        .transform_aggregate(
+            rate="mean(y)",
+            groupby=["month_name"]
+        )
+        .transform_calculate(
+            rate_pct="datum.rate * 100"
+        )
+    )
+
+    # 2) Line + points
+    line = base.mark_line(interpolate="linear", point=True).encode(
+        x=alt.X(
+            "month_name:O",
+            sort=months,                    # enforce Jan→Dec
+            title="Month",
+            axis=alt.Axis(labelAngle=360)
+        ),
+        y=alt.Y("rate_pct:Q", title="Success Rate (%)"),
+        tooltip=[
+            alt.Tooltip("month_name:O", title="Month"),
+            alt.Tooltip("rate_pct:Q", title="Success Rate", format=".1f")
+        ]
+    )
+
+    # 3) Point labels
+    labels = base.mark_text(
+        dy=-10,               # nudge text above each point
+        fontSize=12,
+        color="white"
+    ).encode(
+        x=alt.X("month_name:O", sort=months),
+        y="rate_pct:Q",
+        text=alt.Text("rate_pct:Q", format=".1f")
+    )
+
+    # 4) Combine layers
+    chart = (line + labels).properties(
+        width="container",
+        height=300,
+        title="Monthly Success Rate"
+    ).configure_title(fontSize=18, anchor="start")
+
+    return chart
+
+def contact_channel_pie(df, filter_col="y", filter_val=1):
+    """
+    Given a DataFrame `df`, filters for df[filter_col] == filter_val,
+    then builds & returns a Plotly Pie chart of contact_cellular vs contact_telephone.
+    """
+    # 1) Filter to “wins”
+    wins = df[df[filter_col] == filter_val]
+
+    # 2) Sum up the two channels
+    sums = wins[["contact_cellular", "contact_telephone"]].sum().astype(int)
+    counts = [sums["contact_cellular"], sums["contact_telephone"]]
+
+    # 3) Build the Pie
+    labels = ["Cellular", "Telephone"]
+    fig = go.Figure(go.Pie(
+        labels=labels,
+        values=counts,
+        textinfo="label+value+percent",
+        insidetextorientation="radial"
+    ))
+    fig.update_traces(marker=dict(line=dict(width=1, color="white")))
+    fig.update_layout(
+        title_text="Contact Channel Distribution",
+        showlegend=False
+    )
+    return fig
+
+def plot_loan_venn(df, filter_col="y", filter_val=1, container_class="venn-container"):
+    wins=df[df['y']==1]
+    
+    # FOR loans
+    # ── 1) Compute each subset ──
+    wins["both loans"] = ((wins["housing"] == 1) & (wins["loan"] == 1)).astype(int)
+    wins["no loans"]   = ((wins["housing"] == 0) & (wins["loan"] == 0)).astype(int)
+
+    both       = int(wins["both loans"].sum())
+    housing    = int(wins["housing"].sum()) - both      # housing only
+    personal   = int(wins["loan"].sum())    - both      # personal only
+    no_loans   = int(wins["no loans"].sum())            # neither
+
+    # ── 2) Plot Venn ──
+    fig, ax = plt.subplots()
+    v = venn2(
+        subsets=(housing, personal, both),
+        set_labels=("Housing Loan", "Personal Loan"),
+        ax=ax
+    )
+    # color the regions
+    v.get_patch_by_id('10').set_color('#636EFA')
+    v.get_patch_by_id('01').set_color('#EF553B')
+    v.get_patch_by_id('11').set_color('#00CC96')
+    # annotate “no loans” below
+    ax.text(0.5, -0.1, f"No Loans: {no_loans}",
+            ha="center", va="center", fontsize=12)
+    ax.set_title("Loan Ownership Overlap")
+
+    return fig
+
+
+# age plot
+def kde_age_distribution(df, field="age", filter_col="y", filter_val=1, bandwidth=5):
+    """
+    Render a 1D KDE plot (density estimate) of `field` for rows where df[filter_col] == filter_val.
+    """
+    # Filter wins
+    wins = df[df[filter_col] == filter_val]
+    
+    # Build KDE via Vega-Lite transform_density
+    chart = (
+        alt.Chart(wins)
+        .transform_density(
+            field,
+            as_=[field, "density"],
+            extent=[18, 100],    # compute KDE from 18 → 100
+            bandwidth=bandwidth
+        )
+        .mark_area(opacity=0.5, interpolate="monotone")
+        .encode(
+            x=alt.X(
+                f"{field}:Q",
+                title="Age",
+                scale=alt.Scale(domain=[18, 100]),   # ⟵ clamp the axis here
+                axis=alt.Axis(tickMinStep=5)
+            ),
+            y=alt.Y("density:Q", title="Density"),
+            tooltip=[
+                alt.Tooltip(field, title="Age"),
+                alt.Tooltip("density:Q", title="Density", format=".3f")
+            ]
+        )
+        .properties(
+            width="container",
+            height=300,
+            title="Age Distribution of Wins (KDE)"
+        )
+        .configure_title(fontSize=18, anchor="start")
+        .configure_axis(labelFontSize=12, titleFontSize=14)
+    )
+    return chart
+
+def plot_age_duration_heatmap(df, 
+                             age_start=18, age_end=66, age_step=5,
+                             dur_start=0, dur_end=1200, dur_step=60):
+    """
+    Returns an Altair heatmap of conversion rate (y) by 5-year age bins vs. duration bins.
+    """
+    heatmap_data = df.copy()
+    # 1) Age bins
+    age_bins   = list(range(age_start, age_end + age_step, age_step))
+    age_labels = [f"{b}-{b+age_step-1}" for b in age_bins[:-1]]
+    heatmap_data['age_bin'] = pd.cut(
+        heatmap_data['age'],
+        bins=age_bins,
+        labels=age_labels,
+        right=False
+    )
+
+    # 2) Duration bins
+    dur_bins   = list(range(dur_start, dur_end + dur_step, dur_step))
+    dur_labels = [f"{b}-{b+dur_step-1}" for b in dur_bins[:-1]]
+    heatmap_data['duration_bin'] = pd.cut(
+        heatmap_data['duration'],
+        bins=dur_bins,
+        labels=dur_labels,
+        right=False
+    )
+
+    # 3) Pivot + fill
+    heatmap_df = (
+        heatmap_data
+          .pivot_table(
+             index='age_bin',
+             columns='duration_bin',
+             values='y',
+             aggfunc='mean'
+          )
+          .fillna(0)
+    )
+
+    # 4) Melt back to long form
+    hm_long = heatmap_df.reset_index().melt(
+        id_vars='age_bin',
+        var_name='duration_bin',
+        value_name='conversion_rate'
+    )
+
+    # 5) Altair heatmap
+    chart = (
+        alt.Chart(hm_long)
+          .mark_rect()
+          .encode(
+            x=alt.X("duration_bin:N", title="Duration Bin", sort=dur_labels),
+            y=alt.Y("age_bin:O",      title="Age Bin",      sort=age_labels[::-1]),
+            color=alt.Color("conversion_rate:Q", 
+                            title="Conversion Rate", 
+                            scale=alt.Scale(scheme="blues")),
+            tooltip=[
+              alt.Tooltip("age_bin:O",        title="Age Bin"),
+              alt.Tooltip("duration_bin:N",   title="Duration"),
+              alt.Tooltip("conversion_rate:Q",title="Conversion Rate", format=".1%")
+            ]
+          )
+          .properties(
+            width="container", height=400,
+            title="Conversion Rate Heatmap (Age × Duration)"
+          )
+    )
+    return chart
+
+
+def plot_loans_duration_heatmap(df, 
+                                dur_start=0, dur_end=1200, dur_step=60):
+    """
+    Returns an Altair heatmap of conversion rate (y) by loan category vs. duration bins.
+    """
+    heatmap_data = df.copy()
+
+    # 1) Duration bins
+    dur_bins   = list(range(dur_start, dur_end + dur_step, dur_step))
+    dur_labels = [f"{b}-{b+dur_step-1}" for b in dur_bins[:-1]]
+    heatmap_data['duration_bin'] = pd.cut(
+        heatmap_data['duration'],
+        bins=dur_bins,
+        labels=dur_labels,
+        right=False
+    )
+
+    # 2) Loan category
+    conditions = [
+      (heatmap_data["housing"] == 1) & (heatmap_data["loan"] == 1),  # both
+      (heatmap_data["housing"] == 0) & (heatmap_data["loan"] == 0),  # none
+      (heatmap_data["housing"] == 1) & (heatmap_data["loan"] == 0),  # housing only
+      (heatmap_data["housing"] == 0) & (heatmap_data["loan"] == 1)   # personal only
+    ]
+    choices = ["both_loans","no_loans","housing_loans","personal_loans"]
+    heatmap_data["loans?"] = np.select(conditions, choices, default="unknown")
+
+    # 3) Pivot + fill
+    heatmap_df = (
+        heatmap_data
+          .pivot_table(
+             index='loans?',
+             columns='duration_bin',
+             values='y',
+             aggfunc='mean'
+          )
+          .fillna(0)
+    )
+
+    # 4) Melt
+    hm_long = heatmap_df.reset_index().melt(
+        id_vars='loans?',
+        var_name='duration_bin',
+        value_name='conversion_rate'
+    )
+
+    # 5) Altair heatmap
+    chart = (
+        alt.Chart(hm_long)
+          .mark_rect()
+          .encode(
+            x=alt.X("duration_bin:N", title="Duration Bin", sort=dur_labels),
+            y=alt.Y("loans?:O",      title="Loan Type",     sort=choices),
+            color=alt.Color("conversion_rate:Q", 
+                            title="Conversion Rate", 
+                            scale=alt.Scale(scheme="blues")),
+            tooltip=[
+              alt.Tooltip("loans?:O",        title="Loan Type"),
+              alt.Tooltip("duration_bin:N",  title="Duration"),
+              alt.Tooltip("conversion_rate:Q",title="Conversion Rate", format=".1%")
+            ]
+          )
+          .properties(
+            width="container", height=400,
+            title="Conversion Rate Heatmap (Loans × Duration)"
+          )
+    )
+    return chart
+
+
+
 
 st.set_page_config(
     page_title="Bank Term Deposit App", 
@@ -446,9 +773,9 @@ def dashboard_page(data):
     if persona =="Salesperson":
         st.write("You chose: ", persona)
 
-        # Example KPI cards
-        # col1, col2, col3, col4 = st.columns(4)
-        # col1, col2, col3, col4 = st.columns((1.5, 4, 2, 2))
+        # --- Create our 2×2 grid ---
+        row1_col1, row1_col2 = st.columns(2, gap="medium")
+        row2_col1, row2_col2 = st.columns(2, gap="medium")
 
         # plots for a salesperson
         # 1. plot for sales overtime?
@@ -459,361 +786,60 @@ def dashboard_page(data):
         # 1. plot for sales overtime?
         # 1) Aggregate by month
 
-        def daily_line_altair(df):
+        with row1_col1:
+            st.title("Recommendations")
 
-            df = df[df["days_in_year"] < 365]
-            # 1) Aggregate your raw counts
-            day_counts = (
-                df
-                .groupby("days_in_year", as_index=False)["y"]
-                .sum()
-                .rename(columns={"y": "count_of_y"})
-            )
-            # 2) Create a full index of days 1–364
-            full = pd.DataFrame({"days_in_year": range(1, 365)})
-            # 3) Left-merge and fill missing with 0
-            merged = full.merge(day_counts, on="days_in_year", how="left")
-            merged["count_of_y"] = merged["count_of_y"].fillna(0)
-
-            # 4) Chart that merged DataFrame
-            chart = (
-                alt.Chart(merged)
-                .mark_line(interpolate="linear", point=True)
-                .encode(
-                    x=alt.X("days_in_year:Q", title="Day of Year", scale=alt.Scale(domain=[1, 364]),   
-                            axis=alt.Axis(tickMinStep=1)),
-                    y=alt.Y("count_of_y:Q", title="Count of Y"),
-                    tooltip=["days_in_year", "count_of_y"]
-                )
-                .properties(width="container", height=300,
-                            title="Daily Count of Y (Days 1–364)")
-            )
-            return chart
-
-        def monthly_success_altair(df):
-            months = ["Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec"]
-
-            # 1) Shared transforms
-            base = (
-                alt.Chart(df)
-                .transform_calculate(
-                    month_name=f"['" + "','".join(months) + f"'][datum.month - 1]"
-                )
-                .transform_aggregate(
-                    rate="mean(y)",
-                    groupby=["month_name"]
-                )
-                .transform_calculate(
-                    rate_pct="datum.rate * 100"
-                )
-            )
-
-            # 2) Line + points
-            line = base.mark_line(interpolate="linear", point=True).encode(
-                x=alt.X(
-                    "month_name:O",
-                    sort=months,                    # enforce Jan→Dec
-                    title="Month",
-                    axis=alt.Axis(labelAngle=360)
-                ),
-                y=alt.Y("rate_pct:Q", title="Success Rate (%)"),
-                tooltip=[
-                    alt.Tooltip("month_name:O", title="Month"),
-                    alt.Tooltip("rate_pct:Q", title="Success Rate", format=".1f")
-                ]
-            )
-
-            # 3) Point labels
-            labels = base.mark_text(
-                dy=-10,               # nudge text above each point
-                fontSize=12,
-                color="white"
-            ).encode(
-                x=alt.X("month_name:O", sort=months),
-                y="rate_pct:Q",
-                text=alt.Text("rate_pct:Q", format=".1f")
-            )
-
-            # 4) Combine layers
-            chart = (line + labels).properties(
-                width="container",
-                height=300,
-                title="Monthly Success Rate"
-            ).configure_title(fontSize=18, anchor="start")
-
-            return chart
-
-
-
-
-        choice = st.selectbox(
-            "Which chart would you like to see?",
-            ["Success Count", "Monthly Success Rate"]
-        )
-
-        st.markdown("---")
-
-        # 2) conditional display
-        if choice == "Success Count":
-            chart = daily_line_altair(data)
-            st.altair_chart(chart, use_container_width=True)
-        elif choice =="Monthly Success Rate":  # Monthly Success Rate
-            chart = monthly_success_altair(data)
-            st.altair_chart(chart, use_container_width=True)
-
-        #---------------------------------------------
-        # 2. plots for outcome per variable (w/select box)
-
-        wins=data[data['y']==1]
-
-
-        # FOR CONTACTS
-        contact_counts_np = wins[["contact_cellular","contact_telephone"]].sum()
-        # convert to Python ints
-        contact_counts = [int(contact_counts_np["contact_cellular"]), int(contact_counts_np["contact_telephone"])]
-        # or equivalently:
-        # counts = [counts_np["contact_cellular"].item(), counts_np["contact_telephone"].item()]
-
-        labels = ["Cellular","Telephone"]
-
-        contact_fig = go.Figure(go.Pie(
-            labels=labels,
-            values=contact_counts,
-            textinfo="label+value+percent",     # show label, raw value, and %
-            insidetextorientation="radial"
-        ))
-        contact_fig.update_traces(marker=dict(line=dict(width=1, color="white")))
-        contact_fig.update_layout(title_text="Contact Channel Distribution", showlegend=False)
-        st.plotly_chart(contact_fig, use_container_width=True)
-
-        
-
-        # FOR loans
-        # ── 1) Compute each subset ──
-        wins["both loans"] = ((wins["housing"] == 1) & (wins["loan"] == 1)).astype(int)
-        wins["no loans"]   = ((wins["housing"] == 0) & (wins["loan"] == 0)).astype(int)
-
-        both       = int(wins["both loans"].sum())
-        housing    = int(wins["housing"].sum()) - both      # housing only
-        personal   = int(wins["loan"].sum())    - both      # personal only
-        no_loans   = int(wins["no loans"].sum())            # neither
-
-        # ── 2) Plot Venn ──
-        fig, ax = plt.subplots()
-        v = venn2(
-            subsets=(housing, personal, both),
-            set_labels=("Housing Loan", "Personal Loan"),
-            ax=ax
-        )
-        # color the regions
-        v.get_patch_by_id('10').set_color('#636EFA')
-        v.get_patch_by_id('01').set_color('#EF553B')
-        v.get_patch_by_id('11').set_color('#00CC96')
-        # annotate “no loans” below
-        ax.text(0.5, -0.1, f"No Loans: {no_loans}",
-                ha="center", va="center", fontsize=12)
-        ax.set_title("Loan Ownership Overlap")
-
-        # wrap in our .venn-container
-        st.markdown('<div class="venn-container">', unsafe_allow_html=True)
-        st.pyplot(fig)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-
-        # # FOR CONTACTS
-        # contact_counts_np = wins[["contact_cellular","contact_telephone"]].sum()
-        # # convert to Python ints
-        # contact_counts = [int(contact_counts_np["contact_cellular"]), int(contact_counts_np["contact_telephone"])]
-        # # or equivalently:
-        # # counts = [counts_np["contact_cellular"].item(), counts_np["contact_telephone"].item()]
-
-        # labels = ["Cellular","Telephone"]
-
-        # contact_fig = go.Figure(go.Pie(
-        #     labels=labels,
-        #     values=contact_counts,
-        #     textinfo="label+value+percent",     # show label, raw value, and %
-        #     insidetextorientation="radial"
-        # ))
-        # contact_fig.update_traces(marker=dict(line=dict(width=1, color="white")))
-        # contact_fig.update_layout(title_text="Contact Channel Distribution", showlegend=False)
-        # st.plotly_chart(contact_fig, use_container_width=True)
-
-
-        # age plot
-        def kde_age_distribution(df, field="age", filter_col="y", filter_val=1, bandwidth=5):
+            st.markdown(
             """
-            Render a 1D KDE plot (density estimate) of `field` for rows where df[filter_col] == filter_val.
+            1. TBA
+            2. TBA
+            3. TBA
+            4. TBA
             """
-            # Filter wins
-            wins = df[df[filter_col] == filter_val]
-            
-            # Build KDE via Vega-Lite transform_density
-            chart = (
-                alt.Chart(wins)
-                .transform_density(
-                    field,
-                    as_=[field, "density"],
-                    extent=[18, 100],    # compute KDE from 18 → 100
-                    bandwidth=bandwidth
-                )
-                .mark_area(opacity=0.5, interpolate="monotone")
-                .encode(
-                    x=alt.X(
-                        f"{field}:Q",
-                        title="Age",
-                        scale=alt.Scale(domain=[18, 100]),   # ⟵ clamp the axis here
-                        axis=alt.Axis(tickMinStep=5)
-                    ),
-                    y=alt.Y("density:Q", title="Density"),
-                    tooltip=[
-                        alt.Tooltip(field, title="Age"),
-                        alt.Tooltip("density:Q", title="Density", format=".3f")
-                    ]
-                )
-                .properties(
-                    width="container",
-                    height=300,
-                    title="Age Distribution of Wins (KDE)"
-                )
-                .configure_title(fontSize=18, anchor="start")
-                .configure_axis(labelFontSize=12, titleFontSize=14)
-            )
-            return chart
-
-        # Example usage in Streamlit
-        st.header("KDE of Age for Winning Clients")
-        # Assuming `data` is your DataFrame with 'age' and 'y' columns
-        chart = kde_age_distribution(data, bandwidth=5)
-        st.altair_chart(chart, use_container_width=True)
-
-
-        # conversion heatmap --> which pairs
-
-        heatmap_data=data.copy()
-        # 1) Create your age_bin column (e.g. 5-year bins)
-        age_bins = list(range(18, 66, 5))
-        age_labels = [f"{b}-{b+5}" for b in age_bins[:-1]]
-        heatmap_data['age_bin'] = pd.cut(heatmap_data['age'], bins=age_bins, labels=age_labels, right=False)
-
-        duration_bins = list(range(0, 1200, 60))
-        duration_labels = [f"{b}-{b+60}" for b in duration_bins[:-1]]
-        heatmap_data['duration_bin'] = pd.cut(heatmap_data['duration'], bins=duration_bins, labels=duration_labels, right=False)
-
-        # 2) Pivot: rows = age_bin, cols = channel, values = mean subscription (y)
-        heatmap_df1 = heatmap_data.pivot_table(
-            index='age_bin',
-            columns='duration_bin',   # or 'contact_cellular' vs 'contact_telephone'
-            values='y',
-            aggfunc='mean'
-        )
-        # Convert NaN → 0 (if no samples in that bin/channel)
-        heatmap_df1 = heatmap_df1.fillna(0)
-
-
-        # Melt the pivot back to long form
-        hm_long1 = heatmap_df1.reset_index().melt(
-            id_vars='age_bin', 
-            var_name='duration_bin', 
-            value_name='y'
         )
 
-        heatmap_chart1 = (
-            alt.Chart(hm_long1)
-            .mark_rect()
-            .encode(
-                x=alt.X("duration_bin:N", title="Duration Bin", sort=duration_labels),
-                y=alt.Y("age_bin:O", title="Age Bin", sort=labels[::-1]),
-                color=alt.Color("y:Q", title="y", scale=alt.Scale(scheme="blues")),
-                tooltip=[
-                alt.Tooltip("age_bin:O", title="Age Bin"),
-                alt.Tooltip("duration_bin:N", title="Duration Bin"),
-                alt.Tooltip("y:Q", title="y", format=".1%")
-                ]
-            )
-            .properties(width="container", height=400, title="Conversion Rate Heatmap")
-        )
+        with row1_col2:
+            st.subheader("Trend Over Time")
+            ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
+            with ts_tab:
+                st.altair_chart(daily_line_altair(data), use_container_width=True)
+            with ms_tab:
+                st.altair_chart(monthly_success_altair(data), use_container_width=True)
+    
 
-        st.altair_chart(heatmap_chart1, use_container_width=True)
-
-        ### Another chart
-
-        # 1) Create your age_bin column (e.g. 5-year bins)
-        age_bins = list(range(18, 66, 5))
-        age_labels = [f"{b}-{b+4}" for b in age_bins[:-1]]
-        heatmap_data['age_bin'] = pd.cut(heatmap_data['age'], bins=age_bins, labels=age_labels, right=False)
-
-        # duration_bins = list(range(0, 1200, 60))
-        # duration_labels = [f"{b}-{b+4}" for b in duration_bins[:-1]]
-        # heatmap_data['duration_bin'] = pd.cut(heatmap_data['duration'], bins=duration_bins, labels=duration_labels, right=False)
-
-        # Define conditions for each category
-        conditions = [
-            (heatmap_data["housing"] == 1) & (heatmap_data["loan"] == 1),   # both loans
-            (heatmap_data["housing"] == 0) & (heatmap_data["loan"] == 0),   # no loans
-            (heatmap_data["housing"] == 1) & (heatmap_data["loan"] == 0),   # housing only
-            (heatmap_data["housing"] == 0) & (heatmap_data["loan"] == 1)    # personal only
-        ]
-
-        # Corresponding labels
-        choices = [
-            "both_loans",
-            "no_loans",
-            "housing_loans",
-            "personal_loans"
-        ]
-
-        # Create the new column 'loans?' using np.select
-        heatmap_data["loans?"] = np.select(conditions, choices, default="unknown")
+        with row2_col1:
+            st.subheader("Outcome by Channel & Loans")
+            contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
+            with contact_tab:
+                # Plot 3: contact type pie (Plotly)
+                contact_fig= contact_channel_pie(data)    
+                st.plotly_chart(contact_fig, use_container_width=True)
+            with loan_tab:
+                # Plot 4: loan Venn (matplotlib)
+                venn_fig = plot_loan_venn(data)
+                st.markdown('<div class="venn-container">', unsafe_allow_html=True)
+                st.pyplot(venn_fig)  
+                st.markdown('</div>', unsafe_allow_html=True)
 
 
-        # 2) Pivot: rows = age_bin, cols = channel, values = mean subscription (y)
-        heatmap_df2 = heatmap_data.pivot_table(
-            index='loans?',
-            columns='duration_bin',   # or 'contact_cellular' vs 'contact_telephone'
-            values='y',
-            aggfunc='mean'
-        )
-        # Convert NaN → 0 (if no samples in that bin/channel)
-        heatmap_df2 = heatmap_df2.fillna(0)
+        # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
+        with row2_col2:
+            st.subheader("Distributions & Heatmaps")
+            dist_tab, heat_tab, loan_heat_tab = st.tabs([
+                "Age KDE","Age×Duration Heatmap","Loan×Duration Heatmap"
+            ])
 
+            with dist_tab:
+                # Plot 5: age KDE (Altair)
+                st.altair_chart(kde_age_distribution(data), use_container_width=True)
 
-        # Melt the pivot back to long form
-        hm_long2 = heatmap_df2.reset_index().melt(
-            id_vars='loans?', 
-            var_name='duration_bin', 
-            value_name='y'
-        )
+            with heat_tab:
+                # Plot 6: conversion heatmap by age & duration (Altair)
+                st.altair_chart(plot_age_duration_heatmap(data), use_container_width=True)
 
-        heatmap_chart2 = (
-            alt.Chart(hm_long2)
-            .mark_rect()
-            .encode(
-                x=alt.X("duration_bin:N", title="Duration Bin", sort=duration_labels),
-                y=alt.Y("loans?:O", title="Loan Type", sort=labels[::-1]),
-                color=alt.Color("y:Q", title="y", scale=alt.Scale(scheme="blues")),
-                tooltip=[
-                alt.Tooltip("loans?:O", title="Loan Type"),
-                alt.Tooltip("duration_bin:N", title="Duration Bin"),
-                alt.Tooltip("y:Q", title="y", format=".1%")
-                ]
-            )
-            .properties(width="container", height=400, title="Conversion Rate Heatmap")
-        )
-
-        st.altair_chart(heatmap_chart2, use_container_width=True)
-
-
-        # Sales-based recommendations
-
-        # TO BE ADDED
-
-
-
-
-
-
+            with loan_heat_tab:
+                # Plot 7: conversion heatmap by loan type & duration (Altair)
+                st.altair_chart(plot_loans_duration_heatmap(data), use_container_width=True)
 
 
     elif persona =="Marketing Manager":
