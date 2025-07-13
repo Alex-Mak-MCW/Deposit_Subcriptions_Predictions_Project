@@ -71,7 +71,7 @@ def monthly_line_altair(df):
         alt.Chart(merged)
           .mark_line(interpolate="linear", point=True)
           .encode(
-            x=alt.X("month_name:O", title="Month"),
+            x=alt.X("month_name:O", title="Month", sort=names, axis=alt.Axis(labelAngle=0)),
             y=alt.Y("Contacts Made:Q", title="Contacts Made"),
             tooltip=[alt.Tooltip("month_name:O", title="Month"),
                      alt.Tooltip("Contacts Made:Q", title="Contacts Made")]
@@ -136,6 +136,7 @@ def monthly_success_altair(df):
     ).configure_title(fontSize=18, anchor="start")
 
     return chart
+
 
 def contact_channel_pie(df, filter_col="y", filter_val=1):
     """
@@ -292,7 +293,7 @@ def plot_age_duration_heatmap(df,
         alt.Chart(hm_long)
           .mark_rect()
           .encode(
-            x=alt.X("duration_bin:N", title="Minutes", sort=dur_labels),
+            x=alt.X("duration_bin:N", title="Minutes", sort=dur_labels, axis=alt.Axis(labelAngle=0, labelAlign="center", labelFontSize=9)),
             y=alt.Y("age_bin:O",      title="Age Bin",      sort=age_labels[::-1]),
             color=alt.Color("conversion_rate:Q", 
                             title="Conversion Rate", 
@@ -365,7 +366,7 @@ def plot_loans_duration_heatmap(df, dur_start=0, dur_end=1200, dur_step=60):
         alt.Chart(hm_long)
           .mark_rect()
           .encode(
-            x=alt.X("duration_bin:N", title="Minutes", sort=dur_labels),
+            x=alt.X("duration_bin:N", title="Minutes", sort=dur_labels, axis=alt.Axis(labelAngle=0, labelAlign="center", labelFontSize=9)),
             y=alt.Y("loans?:O",      title="Loan Type",     sort=choices),
             color=alt.Color("conversion_rate:Q", 
                             title="Conversion Rate", 
@@ -856,7 +857,7 @@ def dashboard_page(data):
         # Works both Sales and Marketing
         with row1_col2:
             st.subheader("Campaign Trend Over Time")
-            ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
+            ts_tab, ms_tab = st.tabs(["Monthly Count","Monthly Success"])
             with ts_tab:
                 # daily number of success over time plot
                 st.altair_chart(monthly_line_altair(data), use_container_width=True)
