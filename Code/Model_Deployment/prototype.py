@@ -11,6 +11,14 @@ from matplotlib_venn import venn2
 import matplotlib.pyplot as plt
 import numpy as np
 
+# clustering import
+import plotly.figure_factory as ff
+from scipy.cluster import hierarchy
+from scipy.spatial.distance import pdist
+from sklearn.preprocessing import StandardScaler
+import json
+import plotly.io as pio
+
 # Helper functions
 def daily_line_altair(df):
 
@@ -58,7 +66,7 @@ def monthly_line_altair(df):
         .merge(month_counts, on="month", how="left")
         .fillna(0)
     )
-    # 3) Map to month names & make an ordered categorical
+    # 3) Map to month names & ordered categorical
     names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
     merged["month_name"] = pd.Categorical(
         [names[m-1] for m in merged["month"]],
@@ -66,21 +74,35 @@ def monthly_line_altair(df):
         ordered=True
     )
 
-    # 4) Build the Altair chart
-    chart = (
-        alt.Chart(merged)
-          .mark_line(interpolate="linear", point=True)
-          .encode(
-            x=alt.X("month_name:O", title="Month", sort=names, axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("Contacts Made:Q", title="Contacts Made"),
-            tooltip=[alt.Tooltip("month_name:O", title="Month"),
-                     alt.Tooltip("Contacts Made:Q", title="Contacts Made")]
-          )
-          .properties(
-            width="container", height=300,
-            title="Monthly Contacts Made"
-          )
+    # 4a) base chart transforms
+    base = alt.Chart(merged)
+
+    # 4b) line + points layer
+    line = base.mark_line(interpolate="linear", point=True).encode(
+        x=alt.X("month_name:O", title="Month", sort=names, axis=alt.Axis(labelAngle=0)),
+        y=alt.Y("Contacts Made:Q", title="Contacts Made"),
+        tooltip=[
+            alt.Tooltip("month_name:O", title="Month"),
+            alt.Tooltip("Contacts Made:Q", title="Contacts Made")
+        ]
     )
+
+    # 4c) text‐label layer, nudged above each point
+    labels = base.mark_text(
+        dy=-10,              # move labels 10px above points
+        fontSize=12,
+        color="white"
+    ).encode(
+        x=alt.X("month_name:O", sort=names),
+        y="Contacts Made:Q",
+        text=alt.Text("Contacts Made:Q")
+    )
+
+    # 4d) combine and style
+    chart = (line + labels).properties(
+        width="container", height=300, title="Monthly Contacts Made"
+    )
+
     return chart
 
 def monthly_success_altair(df):
@@ -110,7 +132,7 @@ def monthly_success_altair(df):
             title="Month",
             axis=alt.Axis(labelAngle=360)
         ),
-        y=alt.Y("rate_pct:Q", title="Success Rate (%)"),
+        y=alt.Y("rate_pct:Q", title="Success Rate (%)",  scale=alt.Scale(domain=[0, 60])),
         tooltip=[
             alt.Tooltip("month_name:O", title="Month"),
             alt.Tooltip("rate_pct:Q", title="Success Rate", format=".1f")
@@ -383,6 +405,106 @@ def plot_loans_duration_heatmap(df, dur_start=0, dur_end=1200, dur_step=60):
           )
     )
     return chart
+
+
+# def plot_hierarchical_clustering(df, method='ward', metric='euclidean'):
+#     """
+#     Builds a hierarchical clustering dendrogram using the specified features.
+    
+#     Parameters:
+#     - df: DataFrame containing the data
+#     - features: list of column names to use for clustering
+#     - method: linkage method for hierarchical clustering (e.g., 'ward', 'single', 'complete')
+#     - metric: distance metric for pdist (e.g., 'euclidean', 'cityblock')
+    
+#     Returns:
+#     - fig: Plotly Figure containing the dendrogram
+#     """
+
+#     # 0) declare clusering features
+#     features=['age', 'balance']
+#     # features=['age', 'education', 'default', 'balance', 'y']
+
+#     # 1) Extract feature subset and drop missing
+#     data = df[features].dropna()
+
+#     # 1A) Apply Scaling 
+#     scaler = StandardScaler()
+#     data.loc[:, 'balance'] = scaler.fit_transform(data[['balance']])
+#     # data['balance'] = scaler.fit_transform(data[['balance']])
+    
+#     # 2) Compute pairwise distances
+#     dist_matrix = pdist(data.values, metric=metric)
+    
+#     # 3) Perform hierarchical/agglomerative clustering
+#     linkage_matrix = hierarchy.linkage(dist_matrix, method=method)
+    
+#     # 4) Create Plotly dendrogram (using the linkage)
+#     fig = ff.create_dendrogram(
+#         data.values,
+#         orientation='right',
+#         labels=data.index.astype(str),
+#         linkagefun=lambda _: linkage_matrix
+#     )
+#     fig.update_layout(
+#         width=800,
+#         height=600,
+#         title=f'Hierarchical Clustering Dendrogram ({method.capitalize()} linkage)'
+#     )
+    
+#     return fig
+
+
+def previous_donut(df, filter_col="poutcome", filter_val=1):
+    """
+    Given a DataFrame `df`, filters for df[filter_col] == filter_val,
+    then builds & returns a Plotly Pie chart of contact_cellular vs contact_telephone.
+    """
+    # 1) Filter to “wins”
+    wins = df[df[filter_col] == filter_val]
+
+    # 2) Count 0 vs 1 in target_col
+    counts = wins["y"].value_counts().sort_index()
+    zero_ct = int(counts.get(0, 0))
+    one_ct  = int(counts.get(1, 0))
+
+    # 3) Build labels & values
+    labels = ["Losses", "Wons"]
+    values = [zero_ct, one_ct]
+
+    # 4) Create the donut
+    fig = go.Figure(go.Pie(
+        labels=labels,
+        values=values,
+        hole=0.4,
+        textinfo="label+value+percent",
+        insidetextorientation="horizontal",
+        textposition="inside",
+        marker=dict(
+            colors=["#EF553B", "#636EFA"],   # first slice blue, second red
+            line=dict(width=1, color="white")
+        ),
+        textfont=dict(
+            color=["white", "white"],    # both slices in white
+            size=14
+        )
+    ))
+
+    if filter_val==0:
+        fig_title="Proportion of Campaign Wins when its Previous Campaign Fails"
+    elif filter_val==0.5:
+        fig_title="Proportion of Campaign Wins when its Previous Campaign Outcome is Inconclusive"
+    elif filter_val==1:
+        fig_title="Proportion of Campaign Wins when its Previous Campaign Succeeds"
+
+
+    fig.update_traces(marker=dict(line=dict(width=1, color="white")))
+    fig.update_layout(
+        title_text=fig_title,
+        showlegend=False
+    )
+    return fig
+
 
 
 
@@ -819,7 +941,7 @@ def dashboard_page(data):
 
     # So default is salesperson
     if persona =="Marketing Manager":
-        st.write("You chose: ", persona)
+        # st.write("You chose: ", persona)
 
         # --- Create our 2×2 grid ---
         row1_col1, row1_col2 = st.columns(2, gap="medium")
@@ -844,7 +966,7 @@ def dashboard_page(data):
 
             2. Most customers are around in their early 30s to late 30s.
 
-            3. Conversion rate increases a lot when druation goes up, age doesn't play a huge factor.
+            3. Conversion rate increases a lot when duration goes up, age doesn't play a huge factor.
 
             4. Customers with no loans are more likely to subscribe in when the call was not long.
 
@@ -881,7 +1003,10 @@ def dashboard_page(data):
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
 
-        # Works both Sales and Marketing
+        # Change this:
+
+        # Clustering: 
+
         # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
             st.subheader("Distributions & Heatmaps")
@@ -903,7 +1028,7 @@ def dashboard_page(data):
 
 
     elif persona =="Salesperson":
-        st.write("You chose: ", persona)
+        # st.write("You chose: ", persona)
 
         # --- Create our 2×2 grid ---
         row1_col1, row1_col2 = st.columns(2, gap="medium")
@@ -920,21 +1045,21 @@ def dashboard_page(data):
 
         # Sales-based recommendation
         with row1_col1:
-            st.title("Sales-based Recommendations (TO BE ADDED):")
+            st.title("Sales-based Recommendations:")
 
             st.markdown(
             """
-            1. TBA
+            1. If the client has past subscribed our product before, they are way more likely to subscribe again!
 
-            2. TBA
+            2. Choose to contact the clients on either summer or around Christmas.
 
-            3. TBA
+            3. Don't worry about clients who owed us! 40% of clients that has loans still subscibes to us!
 
-            4. TBA
+            4. Over 50% of previous successful case still subscribes when we call, focus on these customers. 
 
-            5. TBA
+            5. Call as long as possible (ideally over 9 minutes). Call duration is the most important factor determining the campaign outcome!
 
-            6. TBA. 
+            6. Most customers have cellular samples thus they may not have a lot of time, you need to attract their interest quickly!
             """
         )
 
@@ -967,22 +1092,28 @@ def dashboard_page(data):
         # Works both Sales and Marketing
         # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
-            st.subheader("Distributions & Heatmaps")
-            dist_tab, heat_tab, loan_heat_tab = st.tabs([
-                "Age KDE","Age×Duration Heatmap","Loan×Duration Heatmap"
+            st.subheader("Outcome Based on Past Campaign's Outcomes")
+            no_past_tab, past_tab, inconclusive_tab= st.tabs([
+                "No Past Campaign","Successful Past Campaign", "Inconclusive Past Campaign"
             ])
 
-            with dist_tab:
+
+            # Previous vs conversion rate 
+
+
+            with no_past_tab:
                 # Plot 5: age KDE (Altair)
-                st.altair_chart(kde_age_distribution(data), use_container_width=True)
+                # st.altair_chart(kde_age_distribution(data), use_container_width=True)
+                st.plotly_chart(previous_donut(df=data, filter_val=0), use_container_width=True)
 
-            with heat_tab:
+            with past_tab:
                 # Plot 6: conversion heatmap by age & duration (Altair)
-                st.altair_chart(plot_age_duration_heatmap(data), use_container_width=True)
+                # st.altair_chart(plot_age_duration_heatmap(data), use_container_width=True)
+                st.plotly_chart(previous_donut(df=data, filter_val=1), use_container_width=True)
 
-            with loan_heat_tab:
-                # Plot 7: conversion heatmap by loan type & duration (Altair)
-                st.altair_chart(plot_loans_duration_heatmap(data), use_container_width=True)
+            with inconclusive_tab:
+                st.plotly_chart(previous_donut(df=data, filter_val=0.5), use_container_width=True)
+
 
 
 def overview_page(data, preprocessed):
