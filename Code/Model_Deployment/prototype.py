@@ -1114,6 +1114,9 @@ def dashboard_page(data):
             with inconclusive_tab:
                 st.plotly_chart(previous_donut(df=data, filter_val=0.5), use_container_width=True)
 
+def clustering_page(data):
+    st.header("TBA")
+
 
 
 def overview_page(data, preprocessed):
@@ -1231,8 +1234,8 @@ def main():
 
         choice = option_menu(
             menu_title=None,
-            options=["Home", "Deposit Subscription Prediction", "Interactive Dashboard", "Data Overview & Export", "Acknowledgements"],
-            icons=["house", "bank", "bar-chart-line", "table", "award"],
+            options=["Home", "Deposit Subscription Prediction", "Interactive Dashboard", "Customer Segmentation", "Data Overview & Export", "Acknowledgements"],
+            icons=["house", "bank", "bar-chart-line", "pie-chart-fill", "cloud-download", "award"],
             menu_icon="app-indicator",
             default_index=0,
             orientation="vertical"
@@ -1268,6 +1271,8 @@ def main():
         prediction_page(models)
     elif choice == "Interactive Dashboard":
         dashboard_page(data)
+    elif choice == "Customer Segmentation":
+        clustering_page(data)
     elif choice == "Data Overview & Export":
         overview_page(raw_data, data)
     elif choice == "Acknowledgements":
