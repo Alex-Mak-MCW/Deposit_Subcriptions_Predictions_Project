@@ -10,6 +10,7 @@ import altair as alt
 from matplotlib_venn import venn2
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 
 # clustering import
 import plotly.figure_factory as ff
@@ -18,6 +19,7 @@ from scipy.spatial.distance import pdist
 from sklearn.preprocessing import StandardScaler
 import json
 import plotly.io as pio
+from sklearn.cluster import KMeans
 
 # Helper functions
 def daily_line_altair(df):
@@ -1114,9 +1116,113 @@ def dashboard_page(data):
             with inconclusive_tab:
                 st.plotly_chart(previous_donut(df=data, filter_val=0.5), use_container_width=True)
 
-def clustering_page(data):
+def clustering_page(data): 
     st.header("TBA")
 
+    
+    # options for users to choose 
+    st.subheader('Feature Selection')
+
+    # 1) Define your groups here:
+    FEATURE_GROUPS = {
+        "Personal Information": [
+            "age", "education", "default", "balance"
+        ],
+        "Loans": [
+            "housing", "loan"
+        ],
+        "Campaign Metrics": [
+            "day", "month", "duration", "campaign", "pdays",
+            "previous", "poutcome", "days_in_year"
+        ],
+        "Contact Information": [
+            "contact_cellular", "contact_telephone"
+        ],
+        "Marital Status": [
+            "marital_divorced", "marital_married", "marital_single"
+        ],
+        "Employment Information": [
+            "job_admin.", "job_blue_collar", "job_entrepreneur",
+            "job_housemaid", "job_management", "job_retired",
+            "job_self_employed", "job_services", "job_student",
+            "job_technician", "job_unemployed", "job_unknown"
+        ],
+    }
+
+    FEATURE_DESCRIPTIONS = {
+        "Personal Information":    "Core numeric features (age, education level, default flag, balance)",
+        "Loans":                   "Whether the client has housing and/or personal loans",
+        "Campaign Metrics":        "Details of past campaign contacts (timing, counts, outcomes)",
+        "Contact Information":     "Which channel was used to contact the client (cellular vs telephone)",
+        "Marital Status":          "One-hot flags for marital status categories",
+        "Employment Information":  "One-hot flags for each job category"
+    }
+
+    FEATURE_EXAMPLES = {
+        "Personal Information":    "e.g. age, education level, personal balance etc.",
+        "Loans":                   "e.g. any personal or housing loans",
+        "Campaign Metrics":        "e.g. duration, previous contact, previous success etc.",
+        "Contact Information":     "e.g. contact through cellphone or homephone",
+        "Marital Status":          "e.g. married, single, or divorced",
+        "Employment Information":  "e.g. different areas of jobs"
+    }
+
+    st.subheader("Data Preprocessing")
+
+    # 2) Let the user pick groups
+    group_names = list(FEATURE_GROUPS.keys())
+    chosen_groups = st.multiselect("Select at least one of the feature groups below for clustering", group_names)
+
+    if not chosen_groups:
+        st.warning("Please select at least one feature group.")
+    else:
+        # 3) Build a display table of Group → Description → Examples
+        rows = []
+        for g in chosen_groups:
+            rows.append({
+                "Feature Group": g,
+                "Description":   FEATURE_DESCRIPTIONS.get(g, ""),
+                "Examples":      FEATURE_EXAMPLES.get(g, "")
+            })
+        display_df = pd.DataFrame(rows)
+
+        st.subheader("Features by Group")
+        st.table(display_df)
+
+        selected_cols = []
+        for g in chosen_groups:
+            selected_cols.extend(FEATURE_GROUPS[g])
+        selected_cols = list(dict.fromkeys(selected_cols))
+        # st.write("Will cluster on:", selected_cols)
+        st.write("Will cluster on "+str(len(selected_cols))+" columns.")
+
+        # 4) Require at least two features
+        if len(selected_cols) < 2:
+            st.error("Pick at least two features to cluster.")
+        else:
+            # 5) Scale & cluster
+            scaler = StandardScaler()
+            X_scaled = scaler.fit_transform(data[selected_cols])
+
+            st.subheader("Clustering")
+            num_clusters = st.slider("Number of clusters", 2, 10, 3)
+            kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+            data["Cluster"] = kmeans.fit_predict(X_scaled)
+
+            # 6) Visualize on first two features
+            st.subheader("Cluster Visualization")
+            fig, ax = plt.subplots()
+            sns.scatterplot(
+                x=data[selected_cols[0]],
+                y=data[selected_cols[1]],
+                hue=data["Cluster"],
+                palette="viridis",
+                ax=ax
+            )
+            ax.set_xlabel(selected_cols[0])
+            ax.set_ylabel(selected_cols[1])
+            ax.legend(title="Cluster")
+            st.pyplot(fig)
 
 
 def overview_page(data, preprocessed):
