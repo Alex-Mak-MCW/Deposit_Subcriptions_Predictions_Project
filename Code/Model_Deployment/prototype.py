@@ -27,7 +27,7 @@ import shap
 from lime.lime_tabular import LimeTabularExplainer
 import hdbscan
 from shap.plots._waterfall import waterfall_legacy
-
+import streamlit.components.v1 as components
 
 
 # Helper functions
@@ -861,6 +861,91 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
     )
     st.plotly_chart(fig3d)
 
+# Clustering Function
+#-----------------------------------------------
+#-----------------------------------------------
+# @st.cache(allow_output_mutation=True)
+@st.cache(
+    allow_output_mutation=True,
+    hash_funcs={
+        pd.DataFrame: lambda _: None,  # DataFrame unhashable → ignore it
+        dict:        lambda _: None,   # same for dict/list
+        bytearray:   lambda _: None,
+    }
+)
+def load_explainers(model, df: pd.DataFrame, feature_names: tuple):
+    """
+    Builds two SHAP explainers (for P(Yes) and P(No)) + one LIME explainer
+    all on exactly the same feature set.
+    """
+    X = df.loc[:, list(feature_names)]
+    # SHAP: single‐output explainer for P(Yes)
+    shap_explainer = shap.Explainer(
+        lambda data: model.predict_proba(data)[:, 1],
+        X
+    )
+    # LIME: full classifier explainer (we’ll ask for label=1 later)
+    lime_explainer = LimeTabularExplainer(
+        X.values,
+        feature_names   = list(feature_names),
+        class_names     = ['Lose','Win'],
+        discretize_continuous=True
+    )
+    return shap_explainer, lime_explainer
+
+
+
+
+def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_features: int = 10):
+    # ─── normalize inputs to 1×n_features DataFrame ───
+    if isinstance(inputs, dict):
+        X = pd.DataFrame([inputs])
+    elif isinstance(inputs, (list, np.ndarray)):
+        arr = np.array(inputs).reshape(1, -1)
+        cols = lime_explainer.feature_names
+        X = pd.DataFrame(arr, columns=cols)
+    else:
+        X = inputs.copy()
+    assert X.shape[0] == 1, "Need exactly one row of inputs"
+
+    st.header("Through Explainable AI (XAI):")
+
+
+    # ─── LIME for label=1 (“Yes”) ───
+    st.markdown("**1. LIME: Made a local model for your input to highligjt which feature matters the most!**")
+    lime_exp = lime_explainer.explain_instance(
+        X.values.flatten(),
+        model.predict_proba,
+        labels=(1,0),
+        num_features=min(max_lime_features, X.shape[1])
+    )
+
+    lime_html = lime_exp.as_html()
+
+    # wrap it in a white box with some padding & rounded corners
+    wrapper = """
+    <div style="
+        background-color: white;
+        padding: 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    ">
+        {inner}
+    </div>
+    """.format(inner=lime_html)
+
+    components.html(wrapper, height=400)
+    # components.html(lime_exp.as_html(), height=350)
+
+    # ─── SHAP force plot for P(Yes) ───
+    st.markdown("**2. SHAP: Shows how much each of your input impact the final prediction!**")
+    expl = shap_explainer(X)     # Explanation with shape (1, n_features)
+    single_exp = expl[0]          # pick the one row
+    shap.initjs()
+    fig = shap.plots.force(single_exp, matplotlib=True, show=False)
+    st.pyplot(fig, bbox_inches="tight")
+
+
 
 
 # MAIN CODE
@@ -958,7 +1043,7 @@ def load_data():
 # --- REUSABLE UTILS ---
 
 def make_prediction(model, user_input):
-    return model.predict([user_input])
+    return model.predict(user_input)
 
 # Define separate input forms for each model
 def user_input_form_decision_tree():
@@ -1001,23 +1086,29 @@ def user_input_form_decision_tree():
     days_in_year = st.slider("What is the number of Days in a year you are currently at?", min_value=0, max_value=365, value=day_of_year, key=6)
     
     # input handling
-    age = float(age)
-    balance = float(balance)
-    duration = float(duration)
-    duration*=60
-    campaign = float(campaign)
+    age          = float(age)
+    balance      = float(balance)
+    duration     = float(duration) * 60   # convert minutes → seconds
+    campaign     = float(campaign)
+    pdays        = float(pdays)
     days_in_year = float(days_in_year)
+    if poutcome == "Failure":
+        poutcome = 0
+    elif poutcome == "Unknown":
+        poutcome = 0.5
+    else:
+        poutcome = 1
 
-    # for poutcome
-    if poutcome=="Failure":
-        poutcome=0
-    elif poutcome=="Unknown":
-        poutcome=0.5
-    elif poutcome=="Success":
-        poutcome=1
-
-    # return input values in array
-    return [age, balance, duration, campaign, pdays, poutcome, days_in_year]
+    # **NEW**: return a dict instead of a list
+    return {
+        "age":          age,
+        "balance":      balance,
+        "duration":     duration,
+        "campaign":     campaign,
+        "pdays":        pdays,
+        "poutcome":     poutcome,
+        "days_in_year": days_in_year,
+    }
 
 def user_input_form_random_forest():
     
@@ -1062,8 +1153,8 @@ def user_input_form_random_forest():
     # input handling
     age = float(age)
     balance = float(balance)
-    duration = float(duration)
-    duration*=60
+    duration = float(duration) *60
+    # duration*=60
     campaign = float(campaign)
     days_in_year = float(days_in_year)
 
@@ -1076,7 +1167,16 @@ def user_input_form_random_forest():
         poutcome=1
 
     # return input values in array
-    return [age, balance, duration, campaign, pdays, poutcome, days_in_year]
+    # return [age, balance, duration, campaign, pdays, poutcome, days_in_year]
+    return {
+        "age":          age,
+        "balance":      balance,
+        "duration":     duration,
+        "campaign":     campaign,
+        "pdays":        pdays,
+        "poutcome":     poutcome,
+        "days_in_year": days_in_year,
+    }
 
 def user_input_form_xgboost():
 
@@ -1126,8 +1226,8 @@ def user_input_form_xgboost():
     days_in_year = st.slider("What is the number of Days in a year you are currently at?", min_value=0, max_value=365, value=day_of_year, key=28)
     
     # input handling
-    duration = float(duration)
-    duration*=60
+    duration = float(duration) *60
+    # duration*=60
     days_in_year = float(days_in_year)
 
     # for poutcome
@@ -1139,7 +1239,17 @@ def user_input_form_xgboost():
         poutcome=1
 
     # return input values in array
-    return [housing, loan, duration, pdays, poutcome, marital_married, job_blue_collar, job_housemaid, days_in_year]
+    return {
+        "housing":          housing,
+        "loan":             loan,
+        "duration":         duration,
+        "pdays":            float(pdays),
+        "poutcome":         poutcome,
+        "marital_married":  marital_married,
+        "job_blue_collar":  job_blue_collar,
+        "job_housemaid":    job_housemaid,
+        "days_in_year":     days_in_year,
+    }
 
 def display_prediction(prediction):
     col1, col2 = st.columns([0.1, 0.9])
@@ -1200,29 +1310,70 @@ def home_page():
                  caption="Me vibing when I am building this project",
                  use_column_width=True)
 
-def prediction_page(models):
+def prediction_page(models, data):
     st.header("Predicting Term Deposit Subscription")
     st.markdown("---")
-    # st.markdown("<br>", unsafe_allow_html=True)
     st.subheader("Choose an AI model to make predictions!")
+
+    # 0) build full_feature_list once
+    full_feature_list = [c for c in data.columns if c != "y"]
+
     tabs = st.tabs(list(models.keys()))
     for tab, (name, model) in zip(tabs, models.items()):
         with tab:
             # st.subheader(f"{name} Model")
             # Dispatch to the right input form
+
+            # 3a) get the inputs (dict or 1×9 DataFrame)
             if name == 'Decision Tree':
-                inputs = user_input_form_decision_tree()
+                inputs_dict = user_input_form_decision_tree()
             elif name == 'Random Forest':
-                inputs = user_input_form_random_forest()
+                inputs_dict = user_input_form_random_forest()
             else:
-                inputs = user_input_form_xgboost()
+                inputs_dict = user_input_form_xgboost()
+
+            inputs = pd.DataFrame([inputs_dict])
+            print(inputs)
+            feature_names = tuple(inputs_dict.keys())
 
             if st.button(f"Predict with {name}", key=name):
-                try:
-                    pred = make_prediction(model, inputs)
-                    display_prediction(pred)
-                except ValueError:
-                    st.error("Please enter valid numeric values for all fields!")
+                pred = make_prediction(model, inputs)
+                display_prediction(pred)
+
+                # ─────────────────────────────────────────────────
+                # 2) Normalize & infer feature_names from your inputs
+                # ─────────────────────────────────────────────────
+                # if isinstance(inputs, list):
+                #     # assume the list values match the order of full_feature_list
+                #     feature_names = tuple(full_feature_list[: len(inputs)])
+                #     # wrap into a 1×n DataFrame
+                #     inputs = pd.DataFrame([inputs], columns=feature_names)
+
+                # elif isinstance(inputs, dict):
+                #     feature_names = tuple(inputs.keys())
+                #     # optionally wrap into DataFrame if downstream expects it
+                #     inputs = pd.DataFrame([inputs])
+
+                # else:
+                #     # it’s already a DataFrame
+                #     feature_names = tuple(inputs.columns.tolist())
+
+                # ─────────────────────────────────────────────────
+                # 3) Build or fetch your explainers on exactly those features
+                # ─────────────────────────────────────────────────
+                shap_exp, lime_exp = load_explainers(model, data, feature_names)
+
+                print("XAI:", inputs)
+                # ─────────────────────────────────────────────────
+                # 4) Render your dual‐class SHAP + LIME
+                # ─────────────────────────────────────────────────
+                with st.expander("🔍 Check how the model makes its decision!", expanded=True):
+                    show_explanations(
+                        model,
+                        inputs,
+                        shap_exp,
+                        lime_exp
+                    )
 
 
 def dashboard_page(data):
@@ -1768,7 +1919,7 @@ def main():
     if choice == "Home":
         home_page()
     elif choice == "Deposit Subscription Prediction":
-        prediction_page(models)
+        prediction_page(models, data)
     elif choice == "Interactive Dashboard":
         dashboard_page(data)
     elif choice == "Customer Segmentation":
