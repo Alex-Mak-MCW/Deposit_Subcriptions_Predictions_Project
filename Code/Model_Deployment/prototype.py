@@ -535,29 +535,97 @@ def auto_hdbscan(X, min_size=10):
     """HDBSCAN clusters automatically—no k needed (noise = -1)."""
     return hdbscan.HDBSCAN(min_cluster_size=min_size).fit_predict(X)
 
+def show_example_table(data, selected_cols):
+
+    # ─── Feature Descriptions & Examples Table ───────────────────────
+    st.subheader("Feature Descriptions & Examples Table:")
+
+    selected_cols = [
+        "age",
+        "education",
+        "default",
+        "balance",
+        "contact_telephone",
+        "housing",
+        "loan",
+        "day",
+        "month",
+        "duration",
+        "campaign",
+        "pdays",
+        "previous",
+        "poutcome",
+        "days_in_year",
+    ]
+
+    # Build an empty DataFrame with three rows: Feature / Description / Example
+    feature_info = pd.DataFrame(
+        index=["Feature", "Description", "Example"],
+        columns=selected_cols,
+        data=""  # start as empty strings
+    )
+
+    # 1) Row “Feature”: just echo the names
+    feature_info.loc["Feature"] = selected_cols
+
+    # 2) Row “Description”: your human-readable text
+    feature_info.loc["Description"] = [
+        "age (whole number)",
+        "education level (whole number, e.g. 1,2,3)",
+        "previous default? (1=yes, 0=no)",
+        "bank balance (decimal)",
+        "contact channel (1=telephone, 0=cellular)",
+        "housing loan? (1=yes, 0=no)",
+        "personal loan? (1=yes, 0=no)",
+        "day of month of last campaign (1–31)",
+        "month of year of last campaign (1–12)",
+        "call duration in seconds",
+        "times contacted this campaign (incl. this)",
+        "days since last campaign (-1=first time)",
+        "times contacted before this campaign",
+        "outcome of previous campaign (failure/nonexistent/success)",
+        "current day of year (1–366)",
+    ]
+
+    # 3) Row “Example”: a realistic example for each
+    feature_info.loc["Example"] = [
+        "42",
+        "2",
+        "0",
+        "10000.00",
+        "1",
+        "0",
+        "1",
+        "15",
+        "7",
+        "900",
+        "3",
+        "5",
+        "2",
+        "success",
+        "212",
+    ]
+
+    # 1) Drop the “Feature” row (it just repeated your column names)
+    # feature_info = feature_info.drop(index="Feature")
+
+    # 2) Transpose so that
+    #    – index  → each feature name  
+    #    – columns → "Description" and "Example"
+    feature_info = feature_info.T
+
+    feature_info.index = range(1, len(feature_info) + 1)
+
+    # 3) Show it
+    st.table(feature_info)
+
 
 
 # 1) Raw Cluster Feature Means
 def show_cluster_feature_means_raw(data, selected_cols):
-    # ─── Feature Descriptions & Examples Table ───────────────────────
-    st.subheader("Feature Descriptions & Examples (TBA)")
-    # build an empty DataFrame with rows = ["Feature","Description","Example"]
-    feature_info = pd.DataFrame(
-        index=["Feature", "Description", "Example"],
-        columns=selected_cols,
-        data=""
-    )
-    # 1) first row: just re-echo the feature names
-    feature_info.loc["Feature"] = ["" for _ in selected_cols]
-    # 2) second row: placeholder descriptions (you can fill these)
-    feature_info.loc["Description"] = ["" for _ in selected_cols]
-    # 3) third row: placeholder examples
-    feature_info.loc["Example"] = ["" for _ in selected_cols]
-
-    st.table(feature_info)
 
     # ─── Cluster Means & Δ-Means Tables ───────────────────────────────
-    st.subheader("1. Cluster Feature Means (Original Scale) (TBA)")
+    st.subheader("Cluster Feature Means (Original Scale) (TBA)")
     cluster_means = data.groupby("Cluster")[selected_cols].mean().round(2)
     overall_mean  = data[selected_cols].mean()
     delta_means   = (cluster_means.subtract(overall_mean, axis=1)).round(2)
@@ -589,44 +657,44 @@ def show_cluster_feature_means_raw(data, selected_cols):
 
 # 2) Violin Plots on Raw Data
 def plot_violin_top_features_raw(data, selected_cols, top_n=3):
-    st.subheader(f"2. Violin Plots (Original Scale) for Top {top_n} Features (TBA)")
+    # st.subheader(f"2. Violin Plots (Original Scale) for Top {top_n} Features (TBA)")
 
     # 1) Figure out the top-n features by variance of raw cluster means
     cluster_means = data.groupby("Cluster")[selected_cols].mean()
     top_feats = cluster_means.var().sort_values(ascending=False).index[:top_n].tolist()
 
-    # 2) Build a label mapping: -1 → Noise, else → Cluster {i}
-    unique_idxs = sorted(data["Cluster"].unique())
-    label_map = {idx: ("Noise" if idx == -1 else f"Cluster {1+idx}") for idx in unique_idxs}
+    # # 2) Build a label mapping: -1 → Noise, else → Cluster {i}
+    # unique_idxs = sorted(data["Cluster"].unique())
+    # label_map = {idx: ("Noise" if idx == -1 else f"Cluster {1+idx}") for idx in unique_idxs}
 
-    # 3) Copy data and add a human-readable cluster column
-    df = data.copy()
-    df["Cluster_label"] = df["Cluster"].map(label_map)
+    # # 3) Copy data and add a human-readable cluster column
+    # df = data.copy()
+    # df["Cluster_label"] = df["Cluster"].map(label_map)
 
-    # 4) Create columns for side-by-side plots
-    cols = st.columns(len(top_feats))
-    for i, feat in enumerate(top_feats):
-        with cols[i]:
-            fig, ax = plt.subplots()
-            sns.violinplot(
-                x="Cluster_label",
-                y=feat,
-                data=df,
-                inner="quartile",
-                order=[label_map[idx] for idx in unique_idxs],  # preserve ordering
-                ax=ax
-            )
-            ax.set_title(f"{feat} distribution by cluster")
-            ax.set_xlabel("")  # optional: remove repeated x-axis labels
-            ax.tick_params(axis='x', rotation=45)
-            st.pyplot(fig)
+    # # 4) Create columns for side-by-side plots
+    # cols = st.columns(len(top_feats))
+    # for i, feat in enumerate(top_feats):
+    #     with cols[i]:
+    #         fig, ax = plt.subplots()
+    #         sns.violinplot(
+    #             x="Cluster_label",
+    #             y=feat,
+    #             data=df,
+    #             inner="quartile",
+    #             order=[label_map[idx] for idx in unique_idxs],  # preserve ordering
+    #             ax=ax
+    #         )
+    #         ax.set_title(f"{feat} distribution by cluster")
+    #         ax.set_xlabel("")  # optional: remove repeated x-axis labels
+    #         ax.tick_params(axis='x', rotation=45)
+    #         st.pyplot(fig)
     
     return top_feats
 
 
 # 3) Tree-Based Importance (same as before)
 def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
-    st.subheader("3. Tree-Based Feature Importances (TBA)")
+    st.subheader("Tree-Based Feature Importances (TBA)")
     cluster_labels = sorted(data["Cluster"].unique())
     tab_labels = [
         ("Noise" if cl == -1 else f"Cluster {cl}")
@@ -673,7 +741,7 @@ def show_shap_explanation_custom(
     Renders sliders for the top_n most important features, predicts the cluster
     for the custom point via rf_model, and shows a SHAP waterfall plot explaining it.
     """
-    st.subheader("4a. SHAP Explanation for Custom Point (via Top-Feature Sliders) (TBA)")
+    st.subheader("SHAP Explanation for Custom Point (via Top-Feature Sliders) (TBA)")
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
@@ -754,7 +822,7 @@ def show_lime_explanation_custom(
     Renders sliders for the top_n most important features, predicts the cluster
     for the custom point via rf_model, and shows a LIME table explanation.
     """
-    st.subheader("4b. LIME Explanation for Custom Point (via Top-Feature Sliders) (TBA)")
+    st.subheader("LIME Explanation for Custom Point (via Top-Feature Sliders) (TBA)")
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
@@ -843,7 +911,7 @@ def show_lime_explanation_custom(
 
 # 5) 3D Scatter on Raw
 def plot_3d_clusters_raw(data, selected_cols, top_features):
-    st.subheader("5. 3D Cluster Visualization (Original Scale) (TBA)")
+    st.subheader("3D Cluster Visualization (Original Scale) (TBA)")
 
     # get the top 3 features from all the top features got back in the violin plot
     top_features=top_features[:3]
@@ -1626,8 +1694,7 @@ def dashboard_page(data):
 
 
 def clustering_page(data): 
-    st.header("TBA")
-
+    st.header("Customer Segmentation Page")
     
     # options for users to choose 
     st.subheader('Feature Selection')
@@ -1676,11 +1743,9 @@ def clustering_page(data):
         # "Employment Information":  "e.g. different areas of jobs"
     }
 
-    st.subheader("Data Preprocessing")
-
     # 2) Let the user pick groups
     group_names = list(FEATURE_GROUPS.keys())
-    chosen_groups = st.multiselect("Select at least one of the feature groups below for clustering: (TBA)", group_names)
+    chosen_groups = st.multiselect("Select at least one feature group below for clustering:", group_names)
 
     if not chosen_groups:
         st.warning("Please select at least one feature group.")
@@ -1696,7 +1761,7 @@ def clustering_page(data):
         display_df = pd.DataFrame(rows)
         display_df.index = np.arange(1, len(display_df)+1)
 
-        st.subheader("Features by Group")
+        st.subheader("The Features Groups Selected:")
         st.table(display_df)
 
         selected_cols = []
@@ -1756,18 +1821,40 @@ def clustering_page(data):
                 # re-compute X_scaled so our functions work
                 X_scaled        = scaler.transform(data[selected_cols])
 
-                # now call your five widgets exactly as before:
+                # Right order, 
+                # 1. showing 3d clusters
+                # 2. show feature means
+                # 3. show violin plots
+                st.markdown("---")
+                show_example_table(data,selected_cols)
+                st.markdown("---")
+                # get the top features
+                top_features=plot_violin_top_features_raw(data, selected_cols, top_n=3)
+                # show 3d
+                plot_3d_clusters_raw(data, selected_cols, top_features)
                 # 1. Show table of feature means
                 show_cluster_feature_means_raw(data, selected_cols)
-                # 2. Violin plots of top features
-                top_features=plot_violin_top_features_raw(data, selected_cols, top_n=3)
-                # 3. Use RF's feature importance to find important factor of clustering
+                st.markdown("---")
+                 # 3. Use RF's feature importance to find important factor of clustering
                 plot_tree_feature_importance( data, X_scaled, selected_cols )
                 # 4. SHAP & LIME Explanations
+                st.markdown("---")
                 show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
                 show_lime_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
-                # 5. Plot 3D clusters
-                plot_3d_clusters_raw(data, selected_cols, top_features)
+
+
+                # # now call your five widgets exactly as before:
+                # # 1. Show table of feature means
+                # show_cluster_feature_means_raw(data, selected_cols)
+                # # 2. Violin plots of top features
+                # top_features=plot_violin_top_features_raw(data, selected_cols, top_n=3)
+                # # 3. Use RF's feature importance to find important factor of clustering
+                # plot_tree_feature_importance( data, X_scaled, selected_cols )
+                # # 4. SHAP & LIME Explanations
+                # show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
+                # show_lime_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
+                # # 5. Plot 3D clusters
+                # plot_3d_clusters_raw(data, selected_cols, top_features)
 
 
 def overview_page(data, preprocessed):
