@@ -537,87 +537,61 @@ def auto_hdbscan(X, min_size=10):
 
 def show_example_table(data, selected_cols):
 
-    # ─── Feature Descriptions & Examples Table ───────────────────────
-    st.subheader("Feature Descriptions & Examples Table:")
+    st.header("Feature Descriptions & Examples:")
 
-    selected_cols = [
-        "age",
-        "education",
-        "default",
-        "balance",
-        "contact_telephone",
-        "housing",
-        "loan",
-        "day",
-        "month",
-        "duration",
-        "campaign",
-        "pdays",
-        "previous",
-        "poutcome",
-        "days_in_year",
-    ]
+    # 1) define your master mappings once:
+    DESC = {
+        "age":              "age (whole number)",
+        "education":        "education level (1,2,3…)",
+        "default":          "previous default? (1=yes,0=no)",
+        "balance":          "bank balance (decimal)",
+        "contact_telephone":"contact channel (1=telephone,0=cellular)",
+        "housing":          "housing loan? (1=yes,0=no)",
+        "loan":             "personal loan? (1=yes,0=no)",
+        "day":              "day of month of last campaign (1–31)",
+        "month":            "month of year of last campaign (1–12)",
+        "duration":         "call duration in seconds",
+        "campaign":         "times contacted this campaign (incl. this)",
+        "pdays":            "days since last campaign (-1=first time)",
+        "previous":         "times contacted before this campaign",
+        "poutcome":         "outcome of previous campaign (failure/nonexistent/success)",
+        "days_in_year":     "current day of year (1–366)",
+    }
+    EX = {
+        "age":              "42",
+        "education":        "2",
+        "default":          "0",
+        "balance":          "10000.00",
+        "contact_telephone":"1",
+        "housing":          "0",
+        "loan":             "1",
+        "day":              "15",
+        "month":            "7",
+        "duration":         "900",
+        "campaign":         "3",
+        "pdays":            "5",
+        "previous":         "2",
+        "poutcome":         "success",
+        "days_in_year":     "212",
+    }
 
-    # Build an empty DataFrame with three rows: Feature / Description / Example
+    # 2) Build a DataFrame with exactly |selected_cols| columns
     feature_info = pd.DataFrame(
-        index=["Feature", "Description", "Example"],
+        index=["Description", "Example"],
         columns=selected_cols,
-        data=""  # start as empty strings
+        data=""   # placeholder
     )
 
-    # 1) Row “Feature”: just echo the names
-    feature_info.loc["Feature"] = selected_cols
+    # 3) Fill each row by looking up in the dicts
+    feature_info.loc["Description"] = [DESC.get(f, "") for f in selected_cols]
+    feature_info.loc["Example"]     = [EX.get(f,  "") for f in selected_cols]
 
-    # 2) Row “Description”: your human-readable text
-    feature_info.loc["Description"] = [
-        "age (whole number)",
-        "education level (whole number, e.g. 1,2,3)",
-        "previous default? (1=yes, 0=no)",
-        "bank balance (decimal)",
-        "contact channel (1=telephone, 0=cellular)",
-        "housing loan? (1=yes, 0=no)",
-        "personal loan? (1=yes, 0=no)",
-        "day of month of last campaign (1–31)",
-        "month of year of last campaign (1–12)",
-        "call duration in seconds",
-        "times contacted this campaign (incl. this)",
-        "days since last campaign (-1=first time)",
-        "times contacted before this campaign",
-        "outcome of previous campaign (failure/nonexistent/success)",
-        "current day of year (1–366)",
-    ]
+    # 4) Transpose & reformat
+    fi = feature_info.T.reset_index().rename(columns={"index": "Feature"})
+    fi.index = range(1, len(fi) + 1)
 
-    # 3) Row “Example”: a realistic example for each
-    feature_info.loc["Example"] = [
-        "42",
-        "2",
-        "0",
-        "10000.00",
-        "1",
-        "0",
-        "1",
-        "15",
-        "7",
-        "900",
-        "3",
-        "5",
-        "2",
-        "success",
-        "212",
-    ]
-
-    # 1) Drop the “Feature” row (it just repeated your column names)
-    # feature_info = feature_info.drop(index="Feature")
-
-    # 2) Transpose so that
-    #    – index  → each feature name  
-    #    – columns → "Description" and "Example"
-    feature_info = feature_info.T
-
-    feature_info.index = range(1, len(feature_info) + 1)
-
-    # 3) Show it
-    st.table(feature_info)
+    # 5) Display
+    st.table(fi)
 
 
 
@@ -625,14 +599,14 @@ def show_example_table(data, selected_cols):
 def show_cluster_feature_means_raw(data, selected_cols):
 
     # ─── Cluster Means & Δ-Means Tables ───────────────────────────────
-    st.subheader("Cluster Feature Means (Original Scale) (TBA)")
+    st.header("Cluster Feature Means Table")
     cluster_means = data.groupby("Cluster")[selected_cols].mean().round(2)
     overall_mean  = data[selected_cols].mean()
     delta_means   = (cluster_means.subtract(overall_mean, axis=1)).round(2)
 
     # rename index: -1 → "Noise", others → "Index X"
     def make_label(idx):
-        return "Noise" if idx == -1 else f"Cluster {1+idx}"
+        return "Outliers" if idx == -1 else f"Customer Group {1+idx}"
     cluster_means.index = cluster_means.index.map(make_label)
     delta_means.index   = delta_means.index.map(make_label)
 
@@ -644,7 +618,7 @@ def show_cluster_feature_means_raw(data, selected_cols):
     )
     st.dataframe(styled_means)
 
-    st.write("Δ-means (cluster mean minus overall mean):")
+    st.write("Δ-means (Customer Group Mean - Overall Mean):")
     styled_delta = (
         delta_means
         .style
@@ -694,10 +668,10 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
 
 # 3) Tree-Based Importance (same as before)
 def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
-    st.subheader("Tree-Based Feature Importances (TBA)")
+    st.header("Important Factors That Helps Building the Customer Groups")
     cluster_labels = sorted(data["Cluster"].unique())
     tab_labels = [
-        ("Noise" if cl == -1 else f"Cluster {cl}")
+        ("Outliers" if cl == -1 else f"Customer Group {cl+1}")
         for cl in cluster_labels
     ]
     tabs = st.tabs(tab_labels)
@@ -720,12 +694,25 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
             # Plot
             fig, ax = plt.subplots()
             imps.plot.bar(ax=ax)
-            ax.set_title(f"Top {top_n} Features for {'Noise' if cl==-1 else f'Cluster {cl+1}'}")
+            
+            # ─── annotate each bar ───
+            for bar in ax.patches:
+                height = bar.get_height()
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,  # x: center of bar
+                    height,                             # y: top of bar
+                    f"{height:.2f}",                    # label text
+                    ha="center", va="bottom",           # align
+                    fontsize=10                         # adjust if you like
+                )
+            
+            ax.set_title(f"Top {top_n} Features for {'Outliers' if cl==-1 else f'Customer Group {cl+1}'}")
             ax.set_xlabel("Features")
             ax.set_ylabel("Importance Score")
             ax.set_xticklabels(imps.index, rotation=45, ha="right")
             plt.tight_layout()
             st.pyplot(fig)
+
     
     return rf_models
 
@@ -741,7 +728,7 @@ def show_shap_explanation_custom(
     Renders sliders for the top_n most important features, predicts the cluster
     for the custom point via rf_model, and shows a SHAP waterfall plot explaining it.
     """
-    st.subheader("SHAP Explanation for Custom Point (via Top-Feature Sliders) (TBA)")
+    st.subheader("SHAP Explanation for Added Custom Customer")
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
@@ -766,48 +753,73 @@ def show_shap_explanation_custom(
                             for f in selected_cols ]).reshape(1, -1)
     scaled_pt  = scaler.transform(raw_point)
 
-    # 5) Predict cluster
+    # # 5) Predict cluster
     pred = rf_model.predict(scaled_pt)[0]
-    label = "Noise" if pred == -1 else f"Cluster {pred}"
+    label = "Outliers" if pred == -1 else f"Customer Group{pred}"
     proba = rf_model.predict_proba(scaled_pt)[0][pred]
-    st.write(f"**Predicted cluster:** {label} (p={proba:.2f})")
+    st.write(f"**Predicted Customer Group: ** {label} (p={proba:.2f})")
 
-    # 6) Compute SHAP values once
-    explainer   = shap.TreeExplainer(rf_model)
-    shap_vals   = explainer.shap_values(scaled_pt)
-    # select the right slice of shap_values
-    if isinstance(shap_vals, list):
-        # multi-class: list of arrays
-        class_shap = shap_vals[pred]       # shape (n_samples, n_features)
-    else:
-        # single output: array of shape (n_samples, n_features)
-        class_shap = shap_vals
-    # vals = class_shap[0]                   # your custom point's contributions
-    vals = np.array(class_shap)
-    if vals.ndim > 1:
-    # take the first (and only) row
-        vals = vals[0]
-
-    # extract a scalar expected_value
-    ev_raw = explainer.expected_value
-    if isinstance(ev_raw, (list, tuple)):
-        ev = ev_raw[pred]
-    else:
-        ev = ev_raw
-    # if it's still an array, grab the first element
-    if isinstance(ev, np.ndarray):
-        ev = float(np.ravel(ev)[0])
-
-    # 7) Plot waterfall
-    fig = plt.figure()
-    waterfall_legacy(
-        ev,
-        vals[0],
-        feature_names=selected_cols,
-        max_display=top_n,
-        show=False
+    # Build a single‐output explainer for the “pred” class probability:
+    explainer = shap.Explainer(
+        lambda d: rf_model.predict_proba(d)[:, pred], 
+        data[selected_cols]    # or X you trained on
     )
+
+    # Compute the Explanation object (shape: 1×n_features)
+    full_exp = explainer(scaled_pt)
+
+    # Extract the first (and only) explanation
+    single_exp = full_exp[0]
+
+    # Now plot exactly one waterfall
+    shap.initjs()
+    # draw into an Axes
+    ax = shap.plots.waterfall(single_exp, show=False)
+
+    # extract the parent Figure
+    fig = ax.figure
+
+    # render that
     st.pyplot(fig)
+
+    # # 6) Compute SHAP values once
+    # explainer   = shap.TreeExplainer(rf_model)
+    # shap_vals   = explainer.shap_values(scaled_pt)
+    # # select the right slice of shap_values
+    # if isinstance(shap_vals, list):
+    #     # multi-class: list of arrays
+    #     class_shap = shap_vals[pred]       # shape (n_samples, n_features)
+    # else:
+    #     # single output: array of shape (n_samples, n_features)
+    #     class_shap = shap_vals
+    # # vals = class_shap[0]                   # your custom point's contributions
+    # vals = np.array(class_shap)
+    # if vals.ndim > 1:
+    # # take the first (and only) row
+    #     vals = vals[0]
+
+    # # extract a scalar expected_value
+    # ev_raw = explainer.expected_value
+    # if isinstance(ev_raw, (list, tuple)):
+    #     ev = ev_raw[pred]
+    # else:
+    #     ev = ev_raw
+    # # if it's still an array, grab the first element
+    # if isinstance(ev, np.ndarray):
+    #     ev = float(np.ravel(ev)[0])
+
+    # # 7) Plot Waterfall plot
+    # disp = min(top_n, len(selected_cols))
+
+    # fig = plt.figure()
+    # waterfall_legacy(
+    #     ev,
+    #     vals,                     # full array of shap values, not a single scalar
+    #     feature_names=selected_cols,
+    #     max_display=disp,         # never ask for more than you have
+    #     show=False
+    # )
+    # st.pyplot(fig)
 
 
 # 4b) LIME Explanation for Custom Point (via Top-Feature Sliders)
@@ -822,7 +834,7 @@ def show_lime_explanation_custom(
     Renders sliders for the top_n most important features, predicts the cluster
     for the custom point via rf_model, and shows a LIME table explanation.
     """
-    st.subheader("LIME Explanation for Custom Point (via Top-Feature Sliders) (TBA)")
+    st.subheader("LIME Explanation for Added Custom Customer")
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
@@ -832,7 +844,7 @@ def show_lime_explanation_custom(
     global_means = data[selected_cols].mean()
 
     # 3) Render sliders for top features
-    st.write(f"Adjust values for these top {top_n} features:")
+    st.write(f"Adjust values for these top {top_n} features, the rest will be automatically filled with mean values")
     raw_vals = {}
     for feat in top_feats:
         min_v = float(data[feat].min())
@@ -855,76 +867,116 @@ def show_lime_explanation_custom(
     # 5) Predict cluster via surrogate RF
     scaled_point = scaler.transform(raw_point)
     pred_label   = rf_model.predict(scaled_point)[0]
-    label        = "Noise" if pred_label == -1 else f"Cluster {pred_label}"
-    probs        = rf_model.predict_proba(scaled_point)[0]
-    # class names
-    class_names  = ["Noise" if i == -1 else f"Cluster {i}"
-                    for i in sorted(data["Cluster"].unique())]
-    st.write(f"**Predicted cluster:** {label}")
 
+    # 1) get the sorted list of cluster IDs
+    cluster_ids = sorted(data["Cluster"].unique())  # e.g. [-1, 0, 1]
 
-    # 6) LIME table
-    # from lime.lime_tabular import LimeTabularExplainer
-    # Generate LIME explanation
+    # 2) build your human‐friendly names in that same order
+    class_names = [
+        "Outliers" if cid == -1 else f"Group {cid}"
+        for cid in cluster_ids
+    ]
+
+    # 3) find the position of the predicted label in that list
+    pred_index = cluster_ids.index(pred_label)
+
+    # 4) create the explainer with those class_names...
     explainer = LimeTabularExplainer(
-        training_data=data[selected_cols].values,
-        feature_names=selected_cols,
-        class_names=class_names,
+        training_data  = data[selected_cols].values,
+        feature_names  = selected_cols,
+        class_names    = class_names,
         discretize_continuous=True
     )
+
+    # 5) ask LIME to explain exactly that index
     exp = explainer.explain_instance(
         raw_point[0],
         lambda x: rf_model.predict_proba(scaler.transform(x)),
+        labels=(pred_index,),    # <-- use the index, not pred_label itself
         num_features=top_n
     )
 
-    # Build combined plot: left=probabilities, right=feature contributions
-    feat_contrib = exp.as_list()
-    feats, contribs = zip(*feat_contrib)
+    # 6) Render the LIME HTML directly
+    html = exp.as_html()
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
-    # probabilities barh
-    y_pos = range(len(probs))
-    ax1.barh(y_pos, probs, align='center')
-    ax1.set_yticks(y_pos)
-    ax1.set_yticklabels(class_names)
-    ax1.invert_yaxis()
-    ax1.set_xlabel('Probability')
-    ax1.set_title('Prediction Probabilities')
-    # annotate
-    for i, v in enumerate(probs):
-        ax1.text(v + 0.01, i, f"{v:.2f}", va='center')
+    # (optionally wrap it in a white card for your dark theme)
+    wrapper = f"""
+    <div style="
+        background-color: white;
+        padding: 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 50px;
+        align-items: flex-start;
+    ">
+    {html}
+    </div>
+    """
 
-    # contributions barh (reverse for top-down)
-    y2 = range(len(contribs))
-    ax2.barh(y2, contribs, align='center')
-    ax2.set_yticks(y2)
-    ax2.set_yticklabels(feats)
-    ax2.invert_yaxis()
-    ax2.set_xlabel('Contribution')
-    ax2.set_title('Feature Contributions')
-    for i, v in enumerate(contribs):
-        ax2.text(v + (0.01 if v >=0 else -0.01), i, f"{v:.2f}", va='center')
-
-    plt.tight_layout()
-    st.pyplot(fig)
+    components.html(wrapper, height=500, scrolling=True)
 
 # 5) 3D Scatter on Raw
 def plot_3d_clusters_raw(data, selected_cols, top_features):
-    st.subheader("3D Cluster Visualization (Original Scale) (TBA)")
+    st.header("3D Cluster Visualization")
 
-    # get the top 3 features from all the top features got back in the violin plot
-    top_features=top_features[:3]
+    # 1) show number of clusters
+    n_clusters = data["Cluster"].nunique()
+    st.markdown(f"**Number of clusters:** {n_clusters}")
 
-    # option: choosing feature in a 
-    # feat1 = st.selectbox("X axis", top_features, index=0)
-    # feat2 = st.selectbox("Y axis", top_features, index=1)
-    # feat3 = st.selectbox("Z axis", top_features, index=2)
+    # 2) show the counts table
+    counts = data["Cluster"].value_counts().sort_index()
+    counts_df = (
+        counts
+        .rename_axis("cluster_label")
+        .reset_index(name="Count")
+        .set_index("cluster_label")
+    )
+    # build human labels & ordered list
+    uniques = list(counts_df.index)
+    label_map = {}
+    ordered_labels = []
+
+    if -1 in uniques:
+        label_map[-1] = "Outliers"
+        ordered_labels.append("Outliers")
+
+    # skip -1, enumerate the rest
+    for i, cl in enumerate([c for c in uniques if c != -1]):
+        lbl = f"Customer Group {i+1}"
+        label_map[cl] = lbl
+        ordered_labels.append(lbl)
+
+    # rename the index in the table
+    counts_df.index = [label_map[x] for x in counts_df.index]
+    st.table(counts_df)
+
+    # # get the top 3 features from all the top features got back in the violin plot
+    # top_features=top_features[:3]
+
+    # 3) add a categorical column for plotting
+    df = data.copy()
+    df["Cluster_label"] = df["Cluster"].map(label_map)
+
+    # 4) pick top 3 features
+    top3 = top_features[:3]
+
+    # 5) pick a discrete palette & map each label to a color
+    palette = px.colors.qualitative.Plotly  # has ~10 distinct colors
+    color_map = {
+        lbl: palette[i % len(palette)]
+        for i, lbl in enumerate(ordered_labels)
+    }
+
+    # 6) scatter_3d with discrete legend
     fig3d = px.scatter_3d(
-        data,
-        x=top_features[0], y=top_features[1], z=top_features[2],
-        color="Cluster",
-        title="3D view of clusters",
+        df,
+        x=top3[0], y=top3[1], z=top3[2],
+        color="Cluster_label",
+        category_orders={"Cluster_label": ordered_labels},
+        color_discrete_map=color_map,
+        title=f"3D view of {n_clusters} Customer Group, include Outliers ",
         width=700, height=500
     )
     st.plotly_chart(fig3d)
@@ -1702,10 +1754,10 @@ def clustering_page(data):
     # 1) Define your groups here:
     FEATURE_GROUPS = {
         "Personal Information": [
-            "age", "education", "default", "balance", "contact_telephone"
+            "age", "education", "balance", "contact_telephone"
         ],
         "Loans": [
-            "housing", "loan"
+            "housing", "loan", "default"
         ],
         "Campaign Metrics": [
             "day", "month", "duration", "campaign", "pdays",
@@ -1745,7 +1797,7 @@ def clustering_page(data):
 
     # 2) Let the user pick groups
     group_names = list(FEATURE_GROUPS.keys())
-    chosen_groups = st.multiselect("Select at least one feature group below for clustering:", group_names)
+    chosen_groups = st.multiselect("Select at least one feature group below for customer segmentation:", group_names)
 
     if not chosen_groups:
         st.warning("Please select at least one feature group.")
@@ -1768,15 +1820,22 @@ def clustering_page(data):
         for g in chosen_groups:
             selected_cols.extend(FEATURE_GROUPS[g])
         selected_cols = list(dict.fromkeys(selected_cols))
-        # st.write("Will cluster on:", selected_cols)
-        st.write("Will cluster on "+str(len(selected_cols))+" columns.")
+        st.write(f"Will cluster on {len(selected_cols)} columns.")
+
+        # ─────────────────────────────────────────────────
+        # Invalidate old clustering if the feature set has changed
+        # ─────────────────────────────────────────────────
+        if st.session_state.get("last_selected_cols") != selected_cols:
+            for key in ("clustering_done", "cluster_labels", "rf_model", "scaler"):
+                st.session_state.pop(key, None)
+            st.session_state["last_selected_cols"] = selected_cols
 
         # 4) Require at least two features
         if len(selected_cols) < 2:
             st.error("Pick at least two features to cluster.")
+            # return
         else:
             # 5) Scale & cluster
-
             # only once per session, initialize our flags/holders
             if 'clustering_done' not in st.session_state:
                 st.session_state['clustering_done']   = False
@@ -1795,7 +1854,7 @@ def clustering_page(data):
             # data["Cluster"] = kmeans.fit_predict(X_scaled)
 
             # 1) When the user clicks Run Clustering, do the work *once*
-            if st.button("Run Clustering"):
+            if st.button("Run HDBSCAN Clustering Algorithm for Customer Segmentation"):
                 # a) cluster
                 clusterer = hdbscan.HDBSCAN(
                     min_cluster_size=int(round(X_scaled.shape[0]/100)),
@@ -1807,18 +1866,17 @@ def clustering_page(data):
                 rf = RandomForestClassifier(n_estimators=100, random_state=42)
                 rf.fit(X_scaled, labels)
                 # c) stash everything in session_state
-                st.session_state['clustering_done']   = True
-                st.session_state['cluster_labels']    = labels
-                st.session_state['rf_model']          = rf
-                st.session_state['scaler']            = scaler
+                st.session_state["clustering_done"]   = True
+                st.session_state["cluster_labels"]    = labels
+                st.session_state["rf_model"]          = rf
+                st.session_state["scaler"]            = scaler
 
             # 2) If we’ve ever clicked Run Clustering, show the explainers *always*
             if st.session_state['clustering_done']:
                 # restore
-                data["Cluster"] = st.session_state['cluster_labels']
-                rf_model        = st.session_state['rf_model']
-                scaler          = st.session_state['scaler']
-                # re-compute X_scaled so our functions work
+                data["Cluster"] = st.session_state["cluster_labels"]
+                rf_model        = st.session_state["rf_model"]
+                scaler          = st.session_state["scaler"]
                 X_scaled        = scaler.transform(data[selected_cols])
 
                 # Right order, 
@@ -1839,7 +1897,8 @@ def clustering_page(data):
                 plot_tree_feature_importance( data, X_scaled, selected_cols )
                 # 4. SHAP & LIME Explanations
                 st.markdown("---")
-                show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
+                st.header("Try enter a new customer and see where he/she goes using explainable AI (XAI)")
+                # show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
                 show_lime_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
 
 
