@@ -834,7 +834,7 @@ def show_lime_explanation_custom(
     Renders sliders for the top_n most important features, predicts the cluster
     for the custom point via rf_model, and shows a LIME table explanation.
     """
-    st.subheader("LIME Explanation for Added Custom Customer")
+    # st.subheader("LIME Explanation for Added Custom Customer")
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
@@ -844,7 +844,9 @@ def show_lime_explanation_custom(
     global_means = data[selected_cols].mean()
 
     # 3) Render sliders for top features
+    st.markdown("")
     st.write(f"Adjust values for these top {top_n} features, the rest will be automatically filled with mean values")
+    st.markdown("")
     raw_vals = {}
     for feat in top_feats:
         min_v = float(data[feat].min())
@@ -1897,9 +1899,11 @@ def clustering_page(data):
                 plot_tree_feature_importance( data, X_scaled, selected_cols )
                 # 4. SHAP & LIME Explanations
                 st.markdown("---")
-                st.header("Try enter a new customer and see where he/she goes using explainable AI (XAI)")
-                # show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
-                show_lime_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
+
+                with st.expander("Try enter a new customer and see which customer group he/she belongs"):
+                    # st.header("Try enter a new customer and see where he/she goes using explainable AI (XAI)")
+                    # show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
+                    show_lime_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
 
 
                 # # now call your five widgets exactly as before:
