@@ -608,7 +608,17 @@ def show_cluster_feature_means_raw(data, selected_cols):
     def make_label(idx):
         return "Outliers" if idx == -1 else f"Customer Group {1+idx}"
     cluster_means.index = cluster_means.index.map(make_label)
+    # now move "Outliers" to the end
+    if "Outliers" in cluster_means.index:
+        # build a new index order: everything except Outliers, then Outliers
+        new_order = [lab for lab in cluster_means.index if lab != "Outliers"] + ["Outliers"]
+        cluster_means = cluster_means.loc[new_order]
+
     delta_means.index   = delta_means.index.map(make_label)
+    if "Outliers" in delta_means.index:
+        # build a new index order: everything except Outliers, then Outliers
+        new_order = [lab for lab in delta_means.index if lab != "Outliers"] + ["Outliers"]
+        delta_means = delta_means.loc[new_order]
 
     styled_means = (
         cluster_means
@@ -674,6 +684,9 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
         ("Outliers" if cl == -1 else f"Customer Group {cl+1}")
         for cl in cluster_labels
     ]
+    tab_labels.append(tab_labels.pop(0))
+
+
     tabs = st.tabs(tab_labels)
     
     rf_models = {}
@@ -741,12 +754,32 @@ def show_shap_explanation_custom(
     st.write(f"Adjust values for top {top_n} features:")
     raw_vals = {}
     for feat in top_feats:
-        raw_vals[feat] = st.slider(
-            feat,
-            float(data[feat].min()),
-            float(data[feat].max()),
-            float(global_means[feat])
-        )
+        lo = data[feat].min()
+        hi = data[feat].max()
+        mean = global_means[feat]
+
+        if feat == "balance":
+            # continuous slider
+            raw_vals[feat] = st.slider(
+                label=feat,
+                min_value=float(lo),
+                max_value=float(hi),
+                value=float(mean),
+                step=0.01,
+                format="%.2f",
+                key=f"slider_{feat}"
+            )
+        else:
+            # **integer** slider
+            raw_vals[feat] = st.slider(
+                label=feat,
+                min_value=int(lo),
+                max_value=int(hi),
+                value=int(round(mean)),
+                step=1,
+                format="%d",              # <-- force integer formatting
+                key=f"slider_{feat}"
+            )
 
     # 4) Build raw point
     raw_point  = np.array([ raw_vals.get(f, global_means[f]) 
@@ -826,15 +859,11 @@ def show_shap_explanation_custom(
 def show_lime_explanation_custom(
     rf_model,
     scaler,
-    data,
-    selected_cols,
+    data: pd.DataFrame,
+    selected_cols: list,
     top_n: int = 5
 ):
-    """
-    Renders sliders for the top_n most important features, predicts the cluster
-    for the custom point via rf_model, and shows a LIME table explanation.
-    """
-    # st.subheader("LIME Explanation for Added Custom Customer")
+    st.subheader("LIME Explanation for Added Custom Customer")
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
@@ -843,65 +872,76 @@ def show_lime_explanation_custom(
     # 2) Get global means for defaults
     global_means = data[selected_cols].mean()
 
-    # 3) Render sliders for top features
-    st.markdown("")
-    st.write(f"Adjust values for these top {top_n} features, the rest will be automatically filled with mean values")
-    st.markdown("")
+    # 3) Sliders
+    st.write(f"Adjust values for top {top_n} features:")
     raw_vals = {}
     for feat in top_feats:
-        min_v = float(data[feat].min())
-        max_v = float(data[feat].max())
-        default_v = float(global_means[feat])
-        raw_vals[feat] = st.slider(
-            label=feat,
-            min_value=min_v,
-            max_value=max_v,
-            value=default_v,
-            key="RawSlider"+feat
-        )
+        lo = data[feat].min()
+        hi = data[feat].max()
+        mean = global_means[feat]
 
-    # 4) Build full raw feature vector (others fixed at mean)
-    raw_point = np.array([
-        raw_vals.get(feat, global_means[feat])
-        for feat in selected_cols
-    ]).reshape(1, -1)
+        if feat == "balance":
+            # continuous slider
+            raw_vals[feat] = st.slider(
+                label=feat,
+                min_value=float(lo),
+                max_value=float(hi),
+                value=float(mean),
+                step=0.01,
+                format="%.2f",
+                key=f"slider_{feat}"
+            )
+        else:
+            # **integer** slider
+            raw_vals[feat] = st.slider(
+                label=feat,
+                min_value=int(lo),
+                max_value=int(hi),
+                value=int(round(mean)),
+                step=1,
+                format="%d",              # <-- force integer formatting
+                key=f"slider_{feat}"
+            )
 
-    # 5) Predict cluster via surrogate RF
-    scaled_point = scaler.transform(raw_point)
-    pred_label   = rf_model.predict(scaled_point)[0]
+    # 4) Build and scale the point
+    raw_point = np.array([raw_vals.get(f, global_means[f]) 
+                          for f in selected_cols]).reshape(1, -1)
+    scaled_pt = scaler.transform(raw_point)
 
-    # 1) get the sorted list of cluster IDs
-    cluster_ids = sorted(data["Cluster"].unique())  # e.g. [-1, 0, 1]
+    # 5) Predict label & proba
+    pred_label = rf_model.predict(scaled_pt)[0]
+    # get proba array in the model's class order:
+    probas     = rf_model.predict_proba(scaled_pt)[0]
 
-    # 2) build your human‐friendly names in that same order
+    # 6) Align class_names with rf_model.classes_
+    sk_classes = list(rf_model.classes_)  # e.g. [-1, 0, 2]
     class_names = [
-        "Outliers" if cid == -1 else f"Group {cid}"
-        for cid in cluster_ids
+        "Outliers" if cid == -1 else f"Group {cid+1}"
+        for cid in sk_classes
     ]
+    # find the index of our predicted label in that list
+    pred_index = sk_classes.index(pred_label)
 
-    # 3) find the position of the predicted label in that list
-    pred_index = cluster_ids.index(pred_label)
+    # 7) Show textual prediction
+    st.write(f"**Predicted Customer Group:** {class_names[pred_index]} (probability = {probas[pred_index]*100:.0f}%)")
+    st.markdown("---")
 
-    # 4) create the explainer with those class_names...
+    # 8) Build LIME explainer & explanation
     explainer = LimeTabularExplainer(
-        training_data  = data[selected_cols].values,
-        feature_names  = selected_cols,
-        class_names    = class_names,
+        training_data      = data[selected_cols].values,
+        feature_names      = selected_cols,
+        class_names        = class_names,       # aligned now
         discretize_continuous=True
     )
-
-    # 5) ask LIME to explain exactly that index
     exp = explainer.explain_instance(
         raw_point[0],
         lambda x: rf_model.predict_proba(scaler.transform(x)),
-        labels=(pred_index,),    # <-- use the index, not pred_label itself
+        labels=(pred_index,),
         num_features=top_n
     )
 
-    # 6) Render the LIME HTML directly
+    # 9) Render LIME’s HTML
     html = exp.as_html()
-
-    # (optionally wrap it in a white card for your dark theme)
     wrapper = f"""
     <div style="
         background-color: white;
@@ -913,10 +953,9 @@ def show_lime_explanation_custom(
         gap: 50px;
         align-items: flex-start;
     ">
-    {html}
+      {html}
     </div>
     """
-
     components.html(wrapper, height=500, scrolling=True)
 
 # 5) 3D Scatter on Raw
@@ -925,7 +964,7 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
 
     # 1) show number of clusters
     n_clusters = data["Cluster"].nunique()
-    st.markdown(f"**Number of clusters:** {n_clusters}")
+    st.markdown(f"**Number of Groups:** {n_clusters}")
 
     # 2) show the counts table
     counts = data["Cluster"].value_counts().sort_index()
@@ -940,19 +979,58 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
     label_map = {}
     ordered_labels = []
 
-    if -1 in uniques:
-        label_map[-1] = "Outliers"
-        ordered_labels.append("Outliers")
-
-    # skip -1, enumerate the rest
+    # 1) first handle all non–Outlier clusters
     for i, cl in enumerate([c for c in uniques if c != -1]):
         lbl = f"Customer Group {i+1}"
         label_map[cl] = lbl
         ordered_labels.append(lbl)
 
-    # rename the index in the table
+    # 2) then, if you have outliers, put them last
+    if -1 in uniques:
+        label_map[-1] = "Outliers"
+        ordered_labels.append("Outliers")
+
+    # 3) rename your table’s index
     counts_df.index = [label_map[x] for x in counts_df.index]
-    st.table(counts_df)
+
+    # 4) (optional) reorder rows in the display to match ordered_labels
+    counts_df = counts_df.reindex(ordered_labels)
+
+    styled = (
+        counts_df.style
+        .set_caption("**Decision-Tree: Pros & Cons**")
+        .set_table_styles([
+            # Header styling
+            {
+                "selector": "thead th",
+                "props": [
+                ("background-color", "#4B8BBE"),
+                ("color", "white"),
+                ("font-size", "1.3em"),       # larger header text
+                ("text-align", "center"),     # center header
+                ("padding", "0.6em")
+                ]
+            },
+            # Body cells: font size and center
+            {
+                "selector": "tbody td",
+                "props": [
+                ("font-size", "1.1em"),       # bump up body text
+                ("text-align", "center"),     # center cell text
+                ("padding", "0.5em")
+                ]
+            },
+            # Zebra-striping
+            {
+                "selector": "tbody tr:nth-child(even)",
+                "props": [("background-color", "#f9f9f9")]
+            }
+        ])
+    )
+
+    st.dataframe(styled)
+
+    # st.table(counts_df)
 
     # # get the top 3 features from all the top features got back in the violin plot
     # top_features=top_features[:3]
@@ -978,7 +1056,7 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
         color="Cluster_label",
         category_orders={"Cluster_label": ordered_labels},
         color_discrete_map=color_map,
-        title=f"3D view of {n_clusters} Customer Group, include Outliers ",
+        title=f"3D view of Customer Groups & Outliers ",
         width=700, height=500
     )
     st.plotly_chart(fig3d)
@@ -1030,6 +1108,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
         X = inputs.copy()
     assert X.shape[0] == 1, "Need exactly one row of inputs"
 
+    st.markdown("<br>", unsafe_allow_html=True)
     st.header("Through Explainable AI (XAI):")
 
 
@@ -1056,7 +1135,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     </div>
     """.format(inner=lime_html)
 
-    components.html(wrapper, height=400)
+    components.html(wrapper, height=300)
     # components.html(lime_exp.as_html(), height=350)
 
     # ─── SHAP force plot for P(Yes) ───
@@ -1186,8 +1265,10 @@ def user_input_form_decision_tree():
         ]
     })
     dt_pros_cons_df.index = [1, 2, 3]
+    
     # dt_pros_cons_df.index = [''] * len(dt_pros_cons_df)
     # 2) Display it at the top
+
     st.table(dt_pros_cons_df)            # static table :contentReference[oaicite:12]{index=12}
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
@@ -1392,45 +1473,77 @@ def display_prediction(prediction):
 
 
 # --- PAGE FUNCTIONS ---
+# issues: 
+# better title, into, add navigation to other pages-
 
-def home_page():
-    st.header("Welcome to the [Term Deposit Subscription Prediction App]!")
+def home_page(models, data, raw_data):
+    st.header("Welcome to the Term Deposit Subscription Prediction App!")
     st.markdown("---")
-    home_html = """
-        This app adopts data science and machine learning methodologies in the finance sector. With the following functionalities:
-        <br><br>
-        1. **Deposit Subscription Prediction**  
+    st.write(
+        "This app adopts data science and machine learning methodologies in the finance sector. "
+        "Pick one of the boxes below to get started!"
+    )
 
-            Use our fine-tuned ML model to predict whether a client will subscribe!
-        2. **Interactive Dashboard**  
+    # define your four cards: (Title, Description, page_key)
+    cards = [
+        (
+            "Deposit Subscription Prediction",
+            "Use our fine-tuned ML model to predict whether a client will subscribe!",
+            "Deposit Subscription Prediction"
+        ),
+        (
+            "Interactive Dashboard",
+            "Uncover data-driven trends and hidden insights!",
+            "Interactive Dashboard"
+        ),
+        (
+            "Cluster",
+            "TBA!",
+            "Customer Segmentation"
+        ),
+        (
+            "Data Export",
+            "Download our preprocessed data as a CSV. No tip required! 😉",
+            "Data Overview & Export"
+        ),
+    ]
 
-            Uncover data-driven and hidden trends as well as insights!
-        
-        3. **Data Overview**  
-        
-            No time to dig through the data? Just read our summary here!
-        
-        4. **Data Export**  
-        
-            Download our preprocessed data as you wish! We won't ask for your tip. We promise :)
-        <br><br>
-        Hope you have fun playing around with it! If you get stuck or spot any bugs, let me know!
+    cols = st.columns(4, gap="large")
+    for col, (title, desc, page_key) in zip(cols, cards):
+        print(page_key)
+        with col:
+            # the bordered “card”
+            st.markdown(
+                f"""
+                <div style="
+                    border: 2px solid #ccc;
+                    border-radius: 8px;
+                    padding: 16px; 
+                    height: 160px;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: space-between;
+                ">
+                    <div>
+                      <h4 style="margin:0;">{title}</h4>
+                      <p style="font-size:0.9em; color:#555;">{desc}</p>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+            # a little spacer
+            st.markdown("<br>", unsafe_allow_html=True)
 
-        — Alex :)
-    """
-    # st.markdown(home_html, unsafe_allow_html=True)
-    # create two columns: left is text, right is image
-    col1, col2 = st.columns([3, 2], gap="large")
+            # the button that changes the sidebar choice and reruns
+            if col.button("Go", key=f"btn_{page_key}"):
+                
+                st.session_state.page = page_key
+                st.experimental_rerun()
 
-    with col1:
-        # render your HTML or Markdown
-        st.markdown(home_html, unsafe_allow_html=True)
 
-    with col2:
-        # swap in your own image path
-        st.image("Visualizations/title_icon_temp.gif",
-                 caption="Me vibing when I am building this project",
-                 use_column_width=True)
+    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.write("— Alex 🙂")
 
 def prediction_page(models, data):
     st.header("Predicting Term Deposit Subscription")
@@ -1489,6 +1602,10 @@ def prediction_page(models, data):
                 # ─────────────────────────────────────────────────
                 # 4) Render your dual‐class SHAP + LIME
                 # ─────────────────────────────────────────────────
+                st.markdown("---")
+
+                # st.markdown("""<br></br>""")
+
                 with st.expander("🔍 Check how the model makes its decision!", expanded=True):
                     show_explanations(
                         model,
@@ -1499,73 +1616,164 @@ def prediction_page(models, data):
 
 
 def dashboard_page(data):
-    st.header("Interactive Dashboard")
-    st.subheader("Choose your persona & explore key metrics and visualizations: ")
+    # ─── Inject CSS for the card shape ─────────────────────────────────
+    st.markdown(
+        """
+        <style>
+        .kpi-card {
+          background-color: #ffffff;
+          border-radius: 12px;
+          padding: 1rem;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          text-align: center;
+          margin-bottom: 1rem;
+        }
+        /* If you use Plotly inside the card, make its paper transparent */
+        .kpi-card .js-plotly-plot .plotly {
+          background-color: transparent !important;
+        }
 
-    def kpi_indicator(label, value, suffix="", width=1):
+        [data-testid="stMarkdownContainer"] h4 {
+        background-color: #393939;
+        color: white;
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 6px;
+        margin-bottom: 1rem;
+        }
+
+        /* 2) Style each of your 2×2 boxes */
+        .box-card {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+        }
+        .rec-card {
+        background-color: #393939;
+        color: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1.5rem;
+        }
+        .rec-card h2, .rec-card li {
+        color: white; 
+        margin: 0.5rem 0;
+        }
+        .rec-card ul {
+        padding-left: 1.2rem;
+        }
+
+        /* NEW: style every Altair chart like a box */
+        div[data-testid="stVegaLiteChart"],
+        div[data-testid="stPlotlyChart"],
+        div[data-testid="stPyplot"] {
+        background: #ffffff !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        margin-bottom: 1rem !important;
+        }
+
+        /* make sure the chart canvas is transparent so the white shows through */
+        div[data-testid="stPlotlyChart"] .plotly,
+        div[data-testid="stVegaLiteChart"] svg {
+        background-color: transparent !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.header("Interactive Dashboard")
+    st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
+    st.markdown("---")
+
+    def kpi_indicator(label, value, suffix="", color="#000000"):
         fig = go.Figure(go.Indicator(
             mode="number",
-            value=value,                              # must be numeric
-            title={"text": label, "font": {"size": 20}},
-            number={
-                "font": {"size": 60},
-                "suffix": suffix                       # show the % sign here
+            value=value,
+            title={
+                "text": label,
+                "font": {"size": 20, "color": "#FFFFFF"}      # title in your colour
             },
-            domain={"x": [0, 1], "y": [0, 1]}
+            number={
+                "font": {"size": 48, "color": color},     # number in your colour
+                "suffix": suffix
+            },
+            domain={"x": [0,1], "y": [0,1]}
         ))
         fig.update_layout(
-            margin={"l": 0, "r": 0, "t": 0, "b": 0},
-            height=150
+            paper_bgcolor="rgba(0,0,0,0)",  
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=0, r=0, t=0, b=0),
+            height=140
         )
         return fig
 
-    # KPIs
+    # ─── Layout: 5 equal columns ────────────────────────────────────────
+
     k1, k2, k3, k4, k5 = st.columns(5, gap="small")
 
-    # checkbox selection to choose personas
+    CARD_START = '<div class="kpi-card" style="background:#fff;border-radius:12px;padding:1rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin:1rem 0;">'
+    CARD_END   = '</div>'
+
+    # Col 1: persona selector + metric
     with k1:
+        st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
         persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
-        # Time Range Slider
-        # selected_date = st.slider(
-        #     "Time Range",
-        #     min_value=datetime.date(2021, 1, 1),
-        #     max_value=datetime.date(2021, 12, 31),
-        #     value=(datetime.date(2021, 1, 1),datetime.date(2021, 12, 31))
-        # )
-        st.metric("Most Important Factor: ", 'Call Duration')
-    # Display KPI 1 (conversion rate)
-    with k2.container():
-        st.markdown("<br>", unsafe_allow_html=True)
-        k2_fig = kpi_indicator("Conversion Rate", round(data['y'].mean() * 100,2), suffix="%")
-        st.plotly_chart(k2_fig, use_container_width=True)
-        # k2_fig = kpi_indicator("Avg Duration (s)", int(data['duration'].mean().round()))
-        # st.plotly_chart(k2_fig, use_container_width=True)
-        
-    # Display KPI 2 (Avg. Balance of Converters)
-    with k3.container():
-        st.markdown("<br>", unsafe_allow_html=True)
-        if persona=='Marketing Manager':
-            k3_fig = kpi_indicator("First-Time Conversion Rate", round(data[data['previous']==0]['y'].mean()* 100,2), suffix="%")
-            st.plotly_chart(k3_fig, use_container_width=True)
-        else:
-            k5_fig = kpi_indicator("Avg. Duration of Success (mins)", data[data['y']==1]['duration'].mean()/60)
-            st.plotly_chart(k5_fig, use_container_width=True)
+        st.metric("Most Important Factor:", "Call Duration")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # Display KPI 3 (First call Conversion Rate)
-    with k4.container():
-        st.markdown("<br>", unsafe_allow_html=True)
-        k4_fig = kpi_indicator("First Contact %", round((data['previous']==0).mean()*100,2), suffix="%")
-        st.plotly_chart(k4_fig, use_container_width=True)
+    # Col 2: Conversion Rate
+    with k2:
+        st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
+        fig = kpi_indicator("Conversion Rate", round(data['y'].mean()*100,2), "%", color="#e28743")
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    # Display KPI 4 ()
-    with k5.container():
-        st.markdown("<br>", unsafe_allow_html=True)
-        if persona=='Marketing Manager':
-            k5_fig = kpi_indicator("Avg. Acct. Balance for Success", data[data['y']==1]['balance'].mean())
-            st.plotly_chart(k5_fig, use_container_width=True)
+    # Col 3: Persona-specific KPI
+    with k3:
+        st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
+        if persona == 'Marketing Manager':
+            fig = kpi_indicator(
+                "First-Time Conversion Rate",
+                round(data[data['previous']==0]['y'].mean()*100,2),
+                "%", color="#eab676"
+            )
         else:
-            k5_fig = kpi_indicator("Avg Past Success Rate:", round(data[data['y']==1]['poutcome'].mean()*100,2))
-            st.plotly_chart(k5_fig, use_container_width=True)
+            fig = kpi_indicator(
+                "Avg. Duration of Success (mins)",
+                round(data[data['y']==1]['duration'].mean()/60,2),
+                "", color="#76b5c5"
+            )
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Col 4: First Contact %
+    with k4:
+        st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
+        fig = kpi_indicator("First Contact %", round((data['previous']==0).mean()*100,2), "%", color="#FFB6C1")
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # Col 5: Persona-specific KPI
+    with k5:
+        st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
+        if persona == 'Marketing Manager':
+            fig = kpi_indicator(
+                "Avg. Acct. Balance for Success",
+                round(data[data['y']==1]['balance'].mean(),2), color="#abdbe3"
+            )
+        else:
+            fig = kpi_indicator(
+                "Avg Past Success Rate",
+                round(data[data['y']==1]['poutcome'].mean()*100,2),
+                "%", color="#1e81b0"
+            )
+        st.plotly_chart(fig, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
     st.markdown("---")
@@ -1589,23 +1797,42 @@ def dashboard_page(data):
 
         # Sales-based recommendation
         with row1_col1:
-            st.title("Marketing-based Recommendations:")
+            
+            # st.markdown('<div class="rec-card">', unsafe_allow_html=True)
+            
+            # # st.title("Marketing-based Recommendations:")
+            # st.markdown("## Marketing-based Recommendations")
+            # st.markdown(
+            #     """
+            #     1. Customers are more likely to subscribe on specific months (Mar, Aug, Nov, Dec).
 
-            st.markdown(
+            #     2. Most customers are around in their early 30s to late 30s.
+
+            #     3. Conversion rate increases a lot when duration goes up, age doesn't play a huge factor.
+
+            #     4. Customers with no loans are more likely to subscribe in when the call was not long.
+
+            #     5. Most customers have cellular samples thus they may not have a lot of time --> need to develop strategies that can make them stay longer.
+
+            #     6. Over 50% of previous successful case still subscribes when we call, focus on these customers. 
+            #     """
+            # )
+            # st.markdown('</div>', unsafe_allow_html=True)
+
+            recommendations_html = """
+            <div class="rec-card">
+            <h2>Marketing-based Recommendations</h2>
+            <ul>
+                <li>Customers are more likely to subscribe on specific months (Mar, Aug, Nov, Dec).</li>
+                <li>Most customers are around in their early 30s to late 30s.</li>
+                <li>Conversion rate increases a lot when duration goes up, age doesn't play a huge factor.</li>
+                <li>Customers with no loans are more likely to subscribe when the call was not long.</li>
+                <li>Most customers have cellular samples thus they may not have a lot of time → need to develop strategies that can make them stay longer.</li>
+                <li>Over 50% of previous successful cases still subscribe when we call; focus on these customers.</li>
+            </ul>
+            </div>
             """
-            1. Customers are more likely to subscribe on specific months (Mar, Aug, Nov, Dec).
-
-            2. Most customers are around in their early 30s to late 30s.
-
-            3. Conversion rate increases a lot when duration goes up, age doesn't play a huge factor.
-
-            4. Customers with no loans are more likely to subscribe in when the call was not long.
-
-            5. Most customers have cellular samples thus they may not have a lot of time --> need to develop strategies that can make them stay longer.
-
-            6. Over 50% of previous successful case still subscribes when we call, focus on these customers. 
-            """
-        )
+            st.markdown(recommendations_html, unsafe_allow_html=True)
 
         # Works both Sales and Marketing
         with row1_col2:
@@ -1676,23 +1903,38 @@ def dashboard_page(data):
 
         # Sales-based recommendation
         with row1_col1:
-            st.title("Sales-based Recommendations:")
+            # st.title("Sales-based Recommendations:")
 
-            st.markdown(
+            # st.markdown(
+            #     """
+            #     1. If the client has past subscribed our product before, they are way more likely to subscribe again!
+
+            #     2. Choose to contact the clients on either summer or around Christmas.
+
+            #     3. Don't worry about clients who owed us! 40% of clients that has loans still subscibes to us!
+
+            #     4. Over 50% of previous successful case still subscribes when we call, focus on these customers. 
+
+            #     5. Call as long as possible (ideally over 9 minutes). Call duration is the most important factor determining the campaign outcome!
+
+            #     6. Most customers have cellular samples thus they may not have a lot of time, you need to attract their interest quickly!
+            #     """
+            # )
+
+            recommendations_html = """
+            <div class="rec-card">
+            <h2>Sales-based Recommendations</h2>
+            <ul>
+                <li>If the client has past subscribed our product before, they are way more likely to subscribe again!</li>
+                <li>Choose to contact the clients on either summer or around Christmas.</li>
+                <li>Don't worry about clients who owed us! 40% of clients that has loans still subscibes to us!</li>
+                <li>Over 50% of previous successful case still subscribes when we call, focus on these customers.</li>
+                <li>Call as long as possible (ideally over 9 minutes). Call duration is the most important factor determining the campaign outcome!</li>
+                <li>Most customers have cellular samples thus they may not have a lot of time, you need to attract their interest quickly!</li>
+            </ul>
+            </div>
             """
-            1. If the client has past subscribed our product before, they are way more likely to subscribe again!
-
-            2. Choose to contact the clients on either summer or around Christmas.
-
-            3. Don't worry about clients who owed us! 40% of clients that has loans still subscibes to us!
-
-            4. Over 50% of previous successful case still subscribes when we call, focus on these customers. 
-
-            5. Call as long as possible (ideally over 9 minutes). Call duration is the most important factor determining the campaign outcome!
-
-            6. Most customers have cellular samples thus they may not have a lot of time, you need to attract their interest quickly!
-            """
-        )
+            st.markdown(recommendations_html, unsafe_allow_html=True)
 
         # Works both Sales and Marketing
         with row1_col2:
@@ -1748,7 +1990,7 @@ def dashboard_page(data):
 
 
 def clustering_page(data): 
-    st.header("Customer Segmentation Page")
+    st.header("Customer Segmentation")
     
     # options for users to choose 
     st.subheader('Feature Selection')
@@ -1822,7 +2064,7 @@ def clustering_page(data):
         for g in chosen_groups:
             selected_cols.extend(FEATURE_GROUPS[g])
         selected_cols = list(dict.fromkeys(selected_cols))
-        st.write(f"Will cluster on {len(selected_cols)} columns.")
+        st.write(f"{len(selected_cols)} columns are selected.")
 
         # ─────────────────────────────────────────────────
         # Invalidate old clustering if the feature set has changed
@@ -1892,6 +2134,7 @@ def clustering_page(data):
                 top_features=plot_violin_top_features_raw(data, selected_cols, top_n=3)
                 # show 3d
                 plot_3d_clusters_raw(data, selected_cols, top_features)
+                st.markdown("---")
                 # 1. Show table of feature means
                 show_cluster_feature_means_raw(data, selected_cols)
                 st.markdown("---")
@@ -2009,6 +2252,20 @@ def acknowledgement_page(data):
 
 def main():
     # st.title("Bank Term Deposit App")
+
+    if "page" not in st.session_state:
+        st.session_state.page = "Home"
+    # if "sidebar_choice" not in st.session_state:
+    #     st.session_state.sidebar_choice = "Home"
+
+    # 1) define a sidebar callback
+    def sidebar_navigate():
+        st.session_state.page = st.session_state.sidebar_choice
+
+    def _sync_page_with_sidebar(new_choice):
+        # ignore new_choice, just copy over the widget state
+        st.session_state.page = st.session_state.sidebar_choice
+
     with st.sidebar:
         # title
         st.title("Deposit Subscription Prediction Data Science Project")
@@ -2039,10 +2296,16 @@ def main():
             icons=["house", "bank", "bar-chart-line", "pie-chart-fill", "cloud-download", "award"],
             menu_icon="app-indicator",
             default_index=0,
-            orientation="vertical"
+            orientation="vertical",
+            key="sidebar_choice",
+            # on_change=lambda: st.session_state.update(page=st.session_state.sidebar_choice)
+            # on_change=lambda *args: st.session_state.update(page=st.session_state.sidebar_choice)
+            on_change=_sync_page_with_sidebar
         )
 
         # print(choice)
+        # if st.session_state.page != choice:
+        #     st.session_state.page = choice
 
         # --- Help & feedback ---
         with st.expander("❓ Help & Docs"):
@@ -2065,18 +2328,20 @@ def main():
     # )
     # return pd.read_csv(url)
 
+    page = st.session_state.page
 
-    if choice == "Home":
-        home_page()
-    elif choice == "Deposit Subscription Prediction":
+
+    if page == "Home":
+        home_page(models, data, raw_data)
+    elif page == "Deposit Subscription Prediction":
         prediction_page(models, data)
-    elif choice == "Interactive Dashboard":
+    elif page == "Interactive Dashboard":
         dashboard_page(data)
-    elif choice == "Customer Segmentation":
+    elif page == "Customer Segmentation":
         clustering_page(data)
-    elif choice == "Data Overview & Export":
+    elif page == "Data Overview & Export":
         overview_page(raw_data, data)
-    elif choice == "Acknowledgements":
+    elif page == "Acknowledgements":
         acknowledgement_page(data)
 
 if __name__ == "__main__":
