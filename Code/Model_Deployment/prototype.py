@@ -29,6 +29,8 @@ import hdbscan
 from shap.plots._waterfall import waterfall_legacy
 import streamlit.components.v1 as components
 
+import base64
+
 
 # Helper functions
 def daily_line_altair(df):
@@ -1117,7 +1119,8 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     lime_exp = lime_explainer.explain_instance(
         X.values.flatten(),
         model.predict_proba,
-        labels=(1,0),
+        labels=(1,),
+        # labels=(1,0),
         num_features=min(max_lime_features, X.shape[1])
     )
 
@@ -1135,7 +1138,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     </div>
     """.format(inner=lime_html)
 
-    components.html(wrapper, height=300)
+    components.html(wrapper, height=500)
     # components.html(lime_exp.as_html(), height=350)
 
     # ─── SHAP force plot for P(Yes) ───
@@ -1215,15 +1218,18 @@ st.markdown(
 @st.experimental_memo
 def load_models():
     # Load Decision Tree
-    with open('../../Model/DT_Model_Deploy.pkl', 'rb') as f:
+    # with open('../../Model/DT_Model_Deploy.pkl', 'rb') as f:
+    with open('../../Model/DT_Resampled_Model_Deploy.pkl', 'rb') as f:
         dt_pipeline = pickle.load(f)
         dt_model = dt_pipeline.named_steps['classifier']
     # Load Random Forest
-    with open('../../Model/RF_Model_Deploy.pkl', 'rb') as f:
+    # with open('../../Model/RF_Model_Deploy.pkl', 'rb') as f:
+    with open('../../Model/RF_Resampled_Model_Deploy.pkl', 'rb') as f:
         rf_pipeline = pickle.load(f)
         rf_model = rf_pipeline.named_steps['classifier']
     # Load XGBoost
-    with open('../../Model/XGB_Model_Deploy.pkl', 'rb') as f:
+    # with open('../../Model/XGB_Model_Deploy.pkl', 'rb') as f:
+    with open('../../Model/XGB_Resampled_Model_Deploy.pkl', 'rb') as f:
         xgb_pipeline = pickle.load(f)
         xgb_model = xgb_pipeline.named_steps['classifier']
     return {
@@ -1279,21 +1285,39 @@ def user_input_form_decision_tree():
     # Calculate the current day of the year for days_in_year
     day_of_year = datetime.datetime.now().timetuple().tm_yday
 
+
+    # IF USING REGULAR DT MODEL
+    # # Assign inputs
+    # age = st.slider("What is your Age (18-65)?", min_value=18, max_value=65, value=42, key=0)
+    # balance = st.number_input("What is you bank account balance (0-100000000)?", min_value=0, max_value=100000000, value=10000, key=1)
+    # duration = st.slider("How long was the Duration of your last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=2)
+    # campaign = st.slider("How many times did our bank contact you?", min_value=0, max_value=15, value=0, key=3)
+    # pdays = st.slider("How many days ago when we last contacted you?", min_value=0, max_value=1000, value=5, key=4)
+    # poutcome = st.selectbox("What is the outcome of your last campaign?", ["Unknown", "Failure", "Success"], index=0, key=5)  # Default value is 0
+    # days_in_year = st.slider("What is the number of Days in a year you are currently at?", min_value=0, max_value=365, value=day_of_year, key=6)
+
+    # IF USING Resampled DT MODEL
     # Assign inputs
-    age = st.slider("What is your Age (18-65)?", min_value=18, max_value=65, value=42, key=0)
-    balance = st.number_input("What is you bank account balance (0-100000000)?", min_value=0, max_value=100000000, value=10000, key=1)
-    duration = st.slider("How long was the Duration of your last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=2)
-    campaign = st.slider("How many times did our bank contact you?", min_value=0, max_value=15, value=0, key=3)
-    pdays = st.slider("How many days ago when we last contacted you?", min_value=0, max_value=1000, value=5, key=4)
-    poutcome = st.selectbox("What is the outcome of your last campaign?", ["Unknown", "Failure", "Success"], index=0, key=5)  # Default value is 0
-    days_in_year = st.slider("What is the number of Days in a year you are currently at?", min_value=0, max_value=365, value=day_of_year, key=6)
+    age = st.slider("What is your client's age (18-65)?", min_value=18, max_value=65, value=42, key=0)
+    balance = st.number_input("What is your client's bank account balance?", min_value=0, max_value=100000000, value=10000, key=1)
+    housing = st.selectbox("Does your client have any housing loans?", ["No", "Yes"], index=0, key=2)  # Default value is 0
+    duration = st.slider("How long was the duration of your client's last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=3)
+    # campaign = st.slider("How many times did our bank contact you?", min_value=0, max_value=15, value=0, key=3)
+    # pdays = st.slider("How many days ago when we last contacted you?", min_value=0, max_value=1000, value=5, key=4)
+    poutcome = st.selectbox("What is the outcome of your client' last campaign?", ["Unknown", "Failure", "Success"], index=0, key=4)  # Default value is 0
+    days_in_year = st.slider("What is the number of Days in a year did you contact your client?", min_value=0, max_value=365, value=day_of_year, key=5)
+
     
     # input handling
     age          = float(age)
     balance      = float(balance)
+    if housing == "Yes":
+        housing = 1
+    else:
+        housing = 0
     duration     = float(duration) * 60   # convert minutes → seconds
-    campaign     = float(campaign)
-    pdays        = float(pdays)
+    # campaign     = float(campaign)
+    # pdays        = float(pdays)
     days_in_year = float(days_in_year)
     if poutcome == "Failure":
         poutcome = 0
@@ -1303,12 +1327,22 @@ def user_input_form_decision_tree():
         poutcome = 1
 
     # **NEW**: return a dict instead of a list
+    # return {
+    #     "age":          age,
+    #     "balance":      balance,
+    #     "duration":     duration,
+    #     "campaign":     campaign,
+    #     "pdays":        pdays,
+    #     "poutcome":     poutcome,
+    #     "days_in_year": days_in_year,
+    # }
+
+
     return {
         "age":          age,
         "balance":      balance,
+        "housing":     housing,
         "duration":     duration,
-        "campaign":     campaign,
-        "pdays":        pdays,
         "poutcome":     poutcome,
         "days_in_year": days_in_year,
     }
@@ -1344,21 +1378,44 @@ def user_input_form_random_forest():
     # Get current date
     day_of_year = datetime.datetime.now().timetuple().tm_yday
 
+    # Regular RF Model
     # Assign inputs
-    age = st.slider("What is your Age (18-65)?", min_value=18, max_value=65, value=42, key=10)
-    balance = st.number_input("What is your bank account balance (0-100000000)?", min_value=0, max_value=100000000, value=10000, key=11)
-    duration = st.slider("How long was the duration of your last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=12)
-    campaign = st.slider("How many times did our bank contact you?", min_value=0, max_value=15, value=0, key=13)
-    pdays = st.slider("How many days ago when we last contacted you?", min_value=0, max_value=1000, value=5, key=14)
-    poutcome = st.selectbox("What is the outcome of your last campaign?", ["Unknown", "Failure", "Success"], index=0, key=15)  # Default value is 0
-    days_in_year = st.slider("What is the number of Days in a year you are currently at?", min_value=0, max_value=365, value=day_of_year, key=16)
+    # age = st.slider("What is your Age (18-65)?", min_value=18, max_value=65, value=42, key=10)
+    # balance = st.number_input("What is your bank account balance (0-100000000)?", min_value=0, max_value=100000000, value=10000, key=11)
+    # duration = st.slider("How long was the duration of your client's last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=12)
+    # campaign = st.slider("How many times did we contact your client?", min_value=0, max_value=15, value=0, key=13)
+    # pdays = st.slider("How many days ago when we last contacted your client?", min_value=0, max_value=1000, value=5, key=14)
+    # poutcome = st.selectbox("What is the outcome of your client's last campaign?", ["Unknown", "Failure", "Success"], index=0, key=15)  # Default value is 0
+    # days_in_year = st.slider("What is the number of Days in a year did you contact your client?", min_value=0, max_value=365, value=day_of_year, key=16)
+
+    age = st.slider("What is your client's age (18-65)?", min_value=18, max_value=65, value=42, key=10)
+    balance = st.number_input("What is your client' bank account balance?", min_value=0, max_value=100000000, value=10000, key=11)
+    housing = st.selectbox("Does your client have any housing loans?", ["No", "Yes"], index=0, key=12)  # Default value is 0
+    duration = st.slider("How long was the duration of your client's last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=13)
+    pdays = st.slider("How many days ago when we last contacted your client?", min_value=0, max_value=1000, value=5, key=14)
+    poutcome = st.selectbox("What is the outcome of your client's last campaign?", ["Unknown", "Failure", "Success"], index=0, key=15)  # Default value is 0
+    marital_married = st.selectbox("Is your client married?", ["No", "Yes"], index=0, key=16)  # Default value is 0
+    job_blue_collar = st.selectbox("Does your client have a blue collor job?", ["No", "Yes"], index=0, key=17)  # Default value is 0
+    days_in_year = st.slider("What is the number of Days in a year did you contact your client?", min_value=0, max_value=365, value=day_of_year, key=18)
     
     # input handling
     age = float(age)
     balance = float(balance)
+    if housing == "Yes":
+        housing = 1
+    else:
+        housing = 0
     duration = float(duration) *60
-    # duration*=60
-    campaign = float(campaign)
+    pdays        = float(pdays)
+    if marital_married == "Yes":
+        marital_married = 1
+    else:
+        marital_married = 0
+    if job_blue_collar == "Yes":
+        job_blue_collar = 1
+    else:
+        job_blue_collar = 0
+
     days_in_year = float(days_in_year)
 
     # for poutcome
@@ -1369,15 +1426,27 @@ def user_input_form_random_forest():
     elif poutcome=="Success":
         poutcome=1
 
-    # return input values in array
-    # return [age, balance, duration, campaign, pdays, poutcome, days_in_year]
+    # return input values in dict
+    #  IF original model
+    # return {
+    #     "age":          age,
+    #     "balance":      balance,
+    #     "duration":     duration,
+    #     "campaign":     campaign,
+    #     "pdays":        pdays,
+    #     "poutcome":     poutcome,
+    #     "days_in_year": days_in_year,
+    # }
+
     return {
         "age":          age,
         "balance":      balance,
+        "housing":      housing,
         "duration":     duration,
-        "campaign":     campaign,
         "pdays":        pdays,
         "poutcome":     poutcome,
+        "marital_married": marital_married,
+        "job_blue_collar": job_blue_collar,
         "days_in_year": days_in_year,
     }
 
@@ -1415,23 +1484,46 @@ def user_input_form_xgboost():
     # Mapping dictionary for Yes/No to 1/0
     yes_no_mapping = {"Yes": 1, "No": 0}
 
+    # IF Regular XGB Model
     # input handling
-    housing = yes_no_mapping[st.selectbox("Do you have any housing loans?", ["No", "Yes"], index=0, key=20)]
-    loan = yes_no_mapping[st.selectbox("Do you have any personal loans?", ["No", "Yes"], index=0, key=21)]
+    # housing = yes_no_mapping[st.selectbox("Do you have any housing loans?", ["No", "Yes"], index=0, key=20)]
+    # loan = yes_no_mapping[st.selectbox("Do you have any personal loans?", ["No", "Yes"], index=0, key=21)]
+    # duration = st.slider("Duration of your last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=22)
+    # pdays = st.slider("How many days ago was your last contacted by us?", min_value=0, max_value=1000, value=5, key=23)
+    # poutcome = st.selectbox("Outcome of your last campaign?", ["Unknown", "Failure", "Success"], index=0, key=24)  # Default value is 0
+    # marital_married = yes_no_mapping[st.selectbox("Are you married?", ["No", "Yes"], index=0, key=25)]
+    # job_blue_collar = yes_no_mapping[st.selectbox("Do you work as a blue collar job?", ["No", "Yes"], index=0, key=26)]
+    # job_housemaid = yes_no_mapping[st.selectbox("Do you work as a housemaid?", ["No", "Yes"], index=0, key=27)]
+    # days_in_year = st.slider("What is the number of Days in a year you are currently at?", min_value=0, max_value=365, value=day_of_year, key=28)
 
-    duration = st.slider("Duration of your last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=22)
-    pdays = st.slider("How many days ago was your last contacted by us?", min_value=0, max_value=1000, value=5, key=23)
-    poutcome = st.selectbox("Outcome of your last campaign?", ["Unknown", "Failure", "Success"], index=0, key=24)  # Default value is 0
+    housing = yes_no_mapping[st.selectbox("Does your client have any housing loans?", ["No", "Yes"], index=0, key=20)]
+    loan = yes_no_mapping[st.selectbox("Do your client have any personal loans?", ["No", "Yes"], index=0, key=21)]
+    duration = st.slider("What is the duration of your client's last campaign (in minutes)?", min_value=0, max_value=300, value=15, key=22)
+    poutcome = st.selectbox("What is the outcome of your client's last campaign?", ["Unknown", "Failure", "Success"], index=0, key=23)  # Default value is 0
+    contact_cellular = yes_no_mapping[st.selectbox("Do you contact your client based on his/her cellphone?", ["No", "Yes"], index=0, key=24)]
+    # marital_single = yes_no_mapping[st.selectbox("Is your client single?", ["No", "Yes"], index=0, key=25)]
+    # marital_married = yes_no_mapping[st.selectbox("Is your client married?", ["No", "Yes"], index=0, key=25)]
+    # marital_divorced = yes_no_mapping[st.selectbox("Is your client divorced?", ["No", "Yes"], index=0, key=25)]
 
-    marital_married = yes_no_mapping[st.selectbox("Are you married?", ["No", "Yes"], index=0, key=25)]
-    job_blue_collar = yes_no_mapping[st.selectbox("Do you work as a blue collar job?", ["No", "Yes"], index=0, key=26)]
-    job_housemaid = yes_no_mapping[st.selectbox("Do you work as a housemaid?", ["No", "Yes"], index=0, key=27)]
-    days_in_year = st.slider("What is the number of Days in a year you are currently at?", min_value=0, max_value=365, value=day_of_year, key=28)
+    marital_overall = st.selectbox("What is your client's marital status?", ["Single", "Married", "Divorced"], index=0, key=25)  # Default value is 0
+    job_overall = st.selectbox("What does your client work as?", ["Unknown", "Blue Collar", "Management", "Services", "Technician"], index=0, key=26)  # Default value is 0
+
+    # job_blue_collar = yes_no_mapping[st.selectbox("Does your client have a blue collar job?", ["No", "Yes"], index=0, key=26)]
+    # job_management = yes_no_mapping[st.selectbox("Does your client have a management job?", ["No", "Yes"], index=0, key=26)]
+    # job_services = yes_no_mapping[st.selectbox("Does your client work in ?", ["No", "Yes"], index=0, key=26)]
+    # job_technician = yes_no_mapping[st.selectbox("Does your client have a blue collar job?", ["No", "Yes"], index=0, key=26)]
+
     
     # input handling
+    housing = float(housing)
+    loan = float(loan)
     duration = float(duration) *60
     # duration*=60
-    days_in_year = float(days_in_year)
+    # days_in_year = float(days_in_year)
+    if contact_cellular=="No":
+        contact_cellular=0
+    else:
+        contact_cellular=1
 
     # for poutcome
     if poutcome=="Failure":
@@ -1441,17 +1533,63 @@ def user_input_form_xgboost():
     elif poutcome=="Success":
         poutcome=1
 
-    # return input values in array
+    single=0
+    married=0
+    divorced=0
+
+    # marital
+    if marital_overall== "Single":
+        single=1
+    elif marital_overall =="Married":
+        married=1
+    elif marital_overall =="Divorced":
+        divorced=1
+
+    # "Unknown", "Blue Collar", "Management", "Services", "Technician"
+    blue_collar=0
+    management=0
+    services=0
+    technician=0
+
+    if job_overall== "Blue Collar":
+        blue_collar=1
+    elif job_overall =="Management":
+        management=1
+    elif job_overall =="Services":
+        services=1
+    elif job_overall =="Technician":
+        technician=1
+
+    # job
+
+    # IF Original XGB Model
+    # return input values in dict
+    # return {
+    #     "housing":          housing,
+    #     "loan":             loan,
+    #     "duration":         duration,
+    #     "pdays":            float(pdays),
+    #     "poutcome":         poutcome,
+    #     "marital_married":  marital_married,
+    #     "job_blue_collar":  job_blue_collar,
+    #     "job_housemaid":    job_housemaid,
+    #     "days_in_year":     days_in_year,
+    # }
+
+
     return {
         "housing":          housing,
         "loan":             loan,
         "duration":         duration,
-        "pdays":            float(pdays),
         "poutcome":         poutcome,
-        "marital_married":  marital_married,
-        "job_blue_collar":  job_blue_collar,
-        "job_housemaid":    job_housemaid,
-        "days_in_year":     days_in_year,
+        "contact_cellular": contact_cellular,
+        "marital_single":   single,
+        "marital_married":  married,
+        "marital_divorced": divorced,
+        "job_blue_collar":  blue_collar,
+        "job_management":   management,
+        "job_services":     services,
+        "job_technician":   technician
     }
 
 def display_prediction(prediction):
@@ -1461,13 +1599,13 @@ def display_prediction(prediction):
     # Predict success case:
     if prediction[0] == 1:
         with col1:
-            st.image("Visualizations/success_icon.png", width=50)  # Use an icon for success
+            st.image("Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
         with col2:
             st.write("### The Marketing Campaign will Succeed!")
     # Predict failure case:
     elif prediction[0] == 0:
         with col1:
-            st.image("Visualizations/failure_icon.png", width=50)  # Use an icon for failure
+            st.image("Visualizations/Result_Icons/failure_icon.png", width=50)  # Use an icon for failure
         with col2:
             st.write("### The Marketing Campaign will Fail.")
 
@@ -1476,74 +1614,101 @@ def display_prediction(prediction):
 # issues: 
 # better title, into, add navigation to other pages-
 
+
+def _img_to_base64(path):
+    """Read a local image file and return a base64 data-URI string."""
+    with open(path, "rb") as f:
+        data = f.read()
+    b64 = base64.b64encode(data).decode()
+    return f"data:image/png;base64,{b64}"
+
 def home_page(models, data, raw_data):
-    st.header("Welcome to the Term Deposit Subscription Prediction App!")
+    st.header("Welcome to the [Term Deposit Subscription Prediction App]!")
     st.markdown("---")
     st.write(
-        "This app adopts data science and machine learning methodologies in the finance sector. "
-        "Pick one of the boxes below to get started!"
+        "This app uses data science and machine learning methodologies to improve the performance of a term deposit financial product, especially in product analytics, demand forecasting, and customer churning. "
     )
+    st.write("Come try and pick one of the boxes below to get started!")
+    st.markdown("<br>", unsafe_allow_html=True)
 
-    # define your four cards: (Title, Description, page_key)
+    # now each card is (Title, Description, page_key, ImagePath)
     cards = [
         (
+            "Subscription Prediction",
+            "Use our ML model to predict will a client subscribe the term deposit subscription!",
             "Deposit Subscription Prediction",
-            "Use our fine-tuned ML model to predict whether a client will subscribe!",
-            "Deposit Subscription Prediction"
+            "Visualizations/Homepage_Icons/predictive-icon.jpg"
         ),
         (
             "Interactive Dashboard",
-            "Uncover data-driven trends and hidden insights!",
-            "Interactive Dashboard"
+            "Come find out underlying trends and insights via exploratory data analysis (EDA)!",
+            "Interactive Dashboard",
+            "Visualizations/Homepage_Icons/dashboard-icon.jpg"
         ),
         (
-            "Cluster",
-            "TBA!",
-            "Customer Segmentation"
+            "Customer Segmentation",
+            "Try to intelligently assign customer into groups with our clustering algorithm!",
+            "Customer Segmentation",
+            "Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
         ),
         (
-            "Data Export",
-            "Download our preprocessed data as a CSV. No tip required! 😉",
-            "Data Overview & Export"
+            "Data Overview & Export",
+            "Download & use our original data/ cleaned data after conudcting data preprcessing!",
+            "Data Overview & Export",
+            "Visualizations/Homepage_Icons/export-data-icon.jpg"
         ),
     ]
 
     cols = st.columns(4, gap="large")
-    for col, (title, desc, page_key) in zip(cols, cards):
-        print(page_key)
+    for col, (title, desc, page_key, img_path) in zip(cols, cards):
         with col:
-            # the bordered “card”
-            st.markdown(
-                f"""
-                <div style="
-                    border: 2px solid #ccc;
-                    border-radius: 8px;
-                    padding: 16px; 
-                    height: 160px;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: space-between;
-                ">
-                    <div>
-                      <h4 style="margin:0;">{title}</h4>
-                      <p style="font-size:0.9em; color:#555;">{desc}</p>
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            # a little spacer
+            # convert the image to base64
+            uri = _img_to_base64(img_path)
+
+            # build your card HTML, with the <img> inside
+            
+            card_html = f"""
+            <div style="
+                border:2px solid #ccc;
+                border-radius:8px;
+                padding:16px 16px 24px 16px;    /* extra 8px bottom padding */
+                height:300px;
+                display:flex;
+                flex-direction:column;
+                justify-content:space-between;
+                background-color: transparent;  /* so your app’s dark bg shows through */
+            ">
+            <div>
+                <h4 style="margin:0 0 8px 0; color:#fff;">{title}</h4>
+                <p  style="font-size:0.9em;
+                        color:#fff;             /* white description */
+                        margin:0 0 12px 0;">
+                {desc}
+                </p>
+            </div>
+            <div style="
+                text-align:center;
+                margin-bottom:24px;            /* more space below the image */
+            ">
+                <img
+                src="{uri}"
+                style="max-width:100%;
+                        max-height:120px;
+                        object-fit:contain;"
+                />
+            </div>
+            </div>
+            """
+
+            st.markdown(card_html, unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # the button that changes the sidebar choice and reruns
-            if col.button("Go", key=f"btn_{page_key}"):
-                
+            if col.button("Try it out!", key=f"btn_{page_key}"):
                 st.session_state.page = page_key
                 st.experimental_rerun()
 
-
     st.markdown("<br><br>", unsafe_allow_html=True)
-    st.write("— Alex 🙂")
+    # st.write("— Alex 🙂")
 
 def prediction_page(models, data):
     st.header("Predicting Term Deposit Subscription")
@@ -2165,70 +2330,109 @@ def clustering_page(data):
 
 def overview_page(data, preprocessed):
     
-    st.header("Data Overview & Export Page")
-    st.markdown("Choose which dataset you’d like to download: MORE DATA TYPE WILL BE PROVIDED")
+    st.header("Data Overview & Export")
+    st.markdown("---")
+    st.write("This page lets you download the dataset used for this app, either the original “raw” dataset or the cleaned & feature-engineered version.")
+        
+    st.write("This dataset captures information from direct marketing campaigns from a Portuguese banking institution. Its goal is to predict whether its clients will subscribe a term deposit or not.")
     
-    # two equal-width columns
-    col1, col2 = st.columns(2, gap="small")
+    st.markdown("---")
+
+    col1, col_div, col2 = st.columns([1, 0.02, 1])
+
+    st.markdown("---")
+
     
     # Raw data box
-    with col1.container():
+    # ─── Raw Data ──────────────────────────────────────────────
+    with col1:
         st.subheader("Raw Data")
-        # st.write("This is the original, unprocessed dataset as ingested.")
-        # CSV bytes
-        data_csv = data.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="📥 Download Raw Data (.csv)",
-            data=data_csv,
-            file_name="raw_data.csv",
-            mime="text/csv"
-        )
-        # XLSX bytes
-        buffer = io.BytesIO()
-        data.to_excel(buffer, index=False, sheet_name="raw", engine="openpyxl")
-        buffer.seek(0)
-        st.download_button(
-            label="📥 Download Raw Data in Excel (.xlsx)",
-            data=buffer,
-            file_name="raw_data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
 
-        st.markdown("---")
-        st.write("This is the original, unprocessed dataset.")
-    
-    # Preprocessed data box
-    with col2.container():
-        st.subheader("Preprocessed Data")
-        # CSV bytes
-        pre_csv = preprocessed.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="📥 Download Processed Data (.csv)",
-            data=pre_csv,
-            file_name="preprocessed_data.csv",
-            mime="text/csv"
+        # 1) Brief description
+        st.markdown(
+            f"""
+            - **Rows:** {data.shape[0]:,}  
+            - **Columns:** {data.shape[1]:,}  
+            """
         )
-        # XLSX bytes
-        buffer2 = io.BytesIO()
-        preprocessed.to_excel(buffer2, index=False, sheet_name="preprocessed", engine="openpyxl")
-        buffer2.seek(0)
-        st.download_button(
-            label="📥 Download Processed Data in Excel (.xlsx)",
-            data=buffer2,
-            file_name="preprocessed_data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-
-        st.markdown("---")
-        st.write("This version has been cleaned and feature-engineered. Including:")
-        # Numbered list of steps
         st.markdown(
             """
-            1. Handled missing and duplicated data.
-            2. Data transfomration through different imputation, encoding, and other data techniques.
-            3. Anomaly detection & removal.
-            4. Feature engineering by modifying existing features and adding new features.
+            **Contents:**  
+            1. Client's personal and financial information 
+            2. Client's Contact & campaign history 
+            3. The final subscription outcome 
             """
+        )
+
+        # 2) Download buttons
+        csv = data.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "📥 Download Raw Data (.csv)",
+            data=csv,
+            file_name="raw_data.csv",
+            mime="text/csv",
+        )
+        buf = io.BytesIO()
+        data.to_excel(buf, index=False, sheet_name="raw", engine="openpyxl")
+        buf.seek(0)
+        st.download_button(
+            "📥 Download Raw Data (.xlsx)",
+            data=buf,
+            file_name="raw_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    # ─── Divider ───────────────────────────────────────────────
+    with col_div:
+        st.markdown(
+        """
+        <div style="
+            border-left:2px solid #ccc;
+            height:100%;
+            min-height:500px;   /* adjust to match your content */
+            margin:0 auto;
+        "></div> 
+        """,
+        unsafe_allow_html=True
+        )
+    
+    # Preprocessed data box
+    # ─── Preprocessed Data ─────────────────────────────────────
+    with col2:
+        st.subheader("Preprocessed Data")
+
+        # 1) Brief description
+        st.markdown(
+            f"""
+            - **Rows:** {preprocessed.shape[0]:,} (-11)  
+            - **Columns:** {preprocessed.shape[1]:,} (+15) 
+            """
+        )
+        st.markdown(
+            """
+            **This version has been cleaned & feature‐engineered for further data & AI usages, including:**  
+            1. **Data Cleaning:** to remove missing & duplicate entries, include anomaly detection & removal.
+            2. **Data Transformation:** Encoding categorical features & scaling numerics.  
+            3. **Create/ modify features** from existing data.  
+            """
+        )
+
+        # 2) Download buttons
+        csv2 = preprocessed.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "📥 Download Processed Data (.csv)",
+            data=csv2,
+            file_name="preprocessed_data.csv",
+            mime="text/csv",
+        )
+        buf2 = io.BytesIO()
+        preprocessed.to_excel(buf2, index=False, sheet_name="processed", engine="openpyxl")
+        buf2.seek(0)
+        st.download_button(
+            "📥 Download Processed Data (.xlsx)",
+            data=buf2,
+            file_name="preprocessed_data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     
 
@@ -2248,7 +2452,20 @@ def acknowledgement_page(data):
     """
     st.markdown(ack_html, unsafe_allow_html=True)
 
+    st.image("Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
+
 # --- MAIN APP ---
+
+
+# at the top of main()
+PAGE_TO_INDEX = {
+    "Home":                              0,
+    "Deposit Subscription Prediction":  1,
+    "Interactive Dashboard":            2,
+    "Customer Segmentation":            3,
+    "Data Overview & Export":           4,
+    "Acknowledgements":                 5,
+}
 
 def main():
     # st.title("Bank Term Deposit App")
@@ -2290,18 +2507,25 @@ def main():
         # # project = st.selectbox("", project_list, key="project")
         # # choice=project
 
+        current = st.session_state.page
+        idx     = PAGE_TO_INDEX.get(current, 0)
+
         choice = option_menu(
             menu_title=None,
-            options=["Home", "Deposit Subscription Prediction", "Interactive Dashboard", "Customer Segmentation", "Data Overview & Export", "Acknowledgements"],
+            # options=["Home", "Deposit Subscription Prediction", "Interactive Dashboard", "Customer Segmentation", "Data Overview & Export", "Acknowledgements"],
+            options=list(PAGE_TO_INDEX.keys()),
             icons=["house", "bank", "bar-chart-line", "pie-chart-fill", "cloud-download", "award"],
             menu_icon="app-indicator",
-            default_index=0,
+            # default_index=0,
+            default_index=idx,
             orientation="vertical",
-            key="sidebar_choice",
+            # key="sidebar_choice",
             # on_change=lambda: st.session_state.update(page=st.session_state.sidebar_choice)
             # on_change=lambda *args: st.session_state.update(page=st.session_state.sidebar_choice)
-            on_change=_sync_page_with_sidebar
+            # on_change=_sync_page_with_sidebar
         )
+        if choice != current:
+            st.session_state.page = choice
 
         # print(choice)
         # if st.session_state.page != choice:
@@ -2320,7 +2544,7 @@ def main():
     models = load_models()
     data   = load_data()
 
-    raw_data=pd.read_csv("https://raw.githubusercontent.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/refs/heads/main/Data/input.csv")
+    raw_data=pd.read_csv("https://raw.githubusercontent.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/refs/heads/main/Data/input.csv", sep=";")
 
     # url = (
     #     "https://raw.githubusercontent.com/"
@@ -2329,6 +2553,13 @@ def main():
     # return pd.read_csv(url)
 
     page = st.session_state.page
+
+
+    if st.session_state.page != "Home":
+        if st.button("← Back to Home"):
+            st.session_state.page = "Home"
+            st.experimental_rerun()
+
 
 
     if page == "Home":
