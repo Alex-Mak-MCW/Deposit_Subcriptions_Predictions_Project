@@ -1,3 +1,5 @@
+#  Import packages
+
 import streamlit as st
 import pickle
 import datetime
@@ -31,10 +33,18 @@ import streamlit.components.v1 as components
 
 import base64
 
+# -----------------------------------------------
+
 
 # Helper functions
-def daily_line_altair(df):
 
+## Plot functions---------------------------------
+## -----------------------------------------------
+## -----------------------------------------------
+
+# function that plots daily line graph
+def daily_line_altair(df):
+    # limit to be within 365 (omit day 366)
     df = df[df["days_in_year"] < 365]
     # 1) Aggregate your raw counts
     day_counts = (
@@ -64,6 +74,7 @@ def daily_line_altair(df):
     )
     return chart
 
+# plot monthly trend_line graph
 def monthly_line_altair(df):
     # 1) Aggregate by month
     month_counts = (
@@ -118,11 +129,12 @@ def monthly_line_altair(df):
 
     return chart
 
+# plot monthly success rate chart
 def monthly_success_altair(df):
     months = ["Jan","Feb","Mar","Apr","May","Jun",
             "Jul","Aug","Sep","Oct","Nov","Dec"]
 
-    # 1) Shared transforms
+    # 1) Perform transformations
     base = (
         alt.Chart(df)
         .transform_calculate(
@@ -152,7 +164,7 @@ def monthly_success_altair(df):
         ]
     )
 
-    # 3) Point labels
+    # 3) Data labels
     labels = base.mark_text(
         dy=-10,               # nudge text above each point
         fontSize=12,
@@ -163,7 +175,7 @@ def monthly_success_altair(df):
         text=alt.Text("rate_pct:Q", format=".1f")
     )
 
-    # 4) Combine layers
+    # 4) Combine plot & data labels
     chart = (line + labels).properties(
         width="container",
         height=300,
@@ -172,7 +184,7 @@ def monthly_success_altair(df):
 
     return chart
 
-
+# Plot pie chart for contact channel
 def contact_channel_pie(df, filter_col="y", filter_val=1):
     """
     Given a DataFrame `df`, filters for df[filter_col] == filter_val,
@@ -200,7 +212,10 @@ def contact_channel_pie(df, filter_col="y", filter_val=1):
     )
     return fig
 
+# plot venn diagram for success cases over loan types
 def plot_loan_venn(df, filter_col="y", filter_val=1, container_class="venn-container"):
+    
+    # isolate success cases
     wins=df[df['y']==1]
     
     # FOR loans
@@ -232,7 +247,7 @@ def plot_loan_venn(df, filter_col="y", filter_val=1, container_class="venn-conta
     return fig
 
 
-# age plot
+# Function that displays KDE plot
 def kde_age_distribution(df, field="age", filter_col="y", filter_val=1, bandwidth=5):
     """
     Render a 1D KDE plot (density estimate) of `field` for rows where df[filter_col] == filter_val.
@@ -273,6 +288,7 @@ def kde_age_distribution(df, field="age", filter_col="y", filter_val=1, bandwidt
     )
     return chart
 
+# Function that plot the plot x age duration heatmap
 def plot_age_duration_heatmap(df, 
                              age_start=18, age_end=66, age_step=5,
                              dur_start=0, dur_end=1200, dur_step=60):
@@ -346,7 +362,7 @@ def plot_age_duration_heatmap(df,
     )
     return chart
 
-
+# plot the loan type X duration heatmap
 def plot_loans_duration_heatmap(df, dur_start=0, dur_end=1200, dur_step=60):
     """
     Returns an Altair heatmap of conversion rate (y) by loan category vs. duration bins.
@@ -419,55 +435,7 @@ def plot_loans_duration_heatmap(df, dur_start=0, dur_end=1200, dur_step=60):
     )
     return chart
 
-
-# def plot_hierarchical_clustering(df, method='ward', metric='euclidean'):
-#     """
-#     Builds a hierarchical clustering dendrogram using the specified features.
-    
-#     Parameters:
-#     - df: DataFrame containing the data
-#     - features: list of column names to use for clustering
-#     - method: linkage method for hierarchical clustering (e.g., 'ward', 'single', 'complete')
-#     - metric: distance metric for pdist (e.g., 'euclidean', 'cityblock')
-    
-#     Returns:
-#     - fig: Plotly Figure containing the dendrogram
-#     """
-
-#     # 0) declare clusering features
-#     features=['age', 'balance']
-#     # features=['age', 'education', 'default', 'balance', 'y']
-
-#     # 1) Extract feature subset and drop missing
-#     data = df[features].dropna()
-
-#     # 1A) Apply Scaling 
-#     scaler = StandardScaler()
-#     data.loc[:, 'balance'] = scaler.fit_transform(data[['balance']])
-#     # data['balance'] = scaler.fit_transform(data[['balance']])
-    
-#     # 2) Compute pairwise distances
-#     dist_matrix = pdist(data.values, metric=metric)
-    
-#     # 3) Perform hierarchical/agglomerative clustering
-#     linkage_matrix = hierarchy.linkage(dist_matrix, method=method)
-    
-#     # 4) Create Plotly dendrogram (using the linkage)
-#     fig = ff.create_dendrogram(
-#         data.values,
-#         orientation='right',
-#         labels=data.index.astype(str),
-#         linkagefun=lambda _: linkage_matrix
-#     )
-#     fig.update_layout(
-#         width=800,
-#         height=600,
-#         title=f'Hierarchical Clustering Dendrogram ({method.capitalize()} linkage)'
-#     )
-    
-#     return fig
-
-
+# plot the donut chart for proportion of each previous outcome 
 def previous_donut(df, filter_col="poutcome", filter_val=1):
     """
     Given a DataFrame `df`, filters for df[filter_col] == filter_val,
@@ -518,25 +486,16 @@ def previous_donut(df, filter_col="poutcome", filter_val=1):
     )
     return fig
 
-# Clustering Function
-#-----------------------------------------------
-#-----------------------------------------------
+## Clustering-related Functions
+## -----------------------------------------------
+## -----------------------------------------------
 
-# automatically determine hierachical function
-# def auto_hierarchical_k(X, k_min=2, k_max=10):
-#     """Pick best k by silhouette on hierarchical clustering."""
-#     best_k, best_score = k_min, -1
-#     for k in range(k_min, min(k_max, X.shape[0] - 1) + 1):
-#         labels = AgglomerativeClustering(n_clusters=k).fit_predict(X)
-#         score  = silhouette_score(X, labels)
-#         if score > best_score:
-#             best_k, best_score = k, score
-#     return best_k
-
+# Function to perform HDBScan clustering algorithm
 def auto_hdbscan(X, min_size=10):
     """HDBSCAN clusters automatically—no k needed (noise = -1)."""
     return hdbscan.HDBSCAN(min_cluster_size=min_size).fit_predict(X)
 
+# Function to show feature example and descriptions table
 def show_example_table(data, selected_cols):
 
     st.header("Feature Descriptions & Examples:")
@@ -597,7 +556,7 @@ def show_example_table(data, selected_cols):
 
 
 
-# 1) Raw Cluster Feature Means
+#  Function that computes and plots raw Cluster Feature Means
 def show_cluster_feature_means_raw(data, selected_cols):
 
     # ─── Cluster Means & Δ-Means Tables ───────────────────────────────
@@ -641,13 +600,15 @@ def show_cluster_feature_means_raw(data, selected_cols):
 
 
 
-# 2) Violin Plots on Raw Data
+# Function that build Violin Plots on Raw Data
 def plot_violin_top_features_raw(data, selected_cols, top_n=3):
     # st.subheader(f"2. Violin Plots (Original Scale) for Top {top_n} Features (TBA)")
 
     # 1) Figure out the top-n features by variance of raw cluster means
     cluster_means = data.groupby("Cluster")[selected_cols].mean()
     top_feats = cluster_means.var().sort_values(ascending=False).index[:top_n].tolist()
+
+    # Codebase for printing the violin plots
 
     # # 2) Build a label mapping: -1 → Noise, else → Cluster {i}
     # unique_idxs = sorted(data["Cluster"].unique())
@@ -678,9 +639,11 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
     return top_feats
 
 
-# 3) Tree-Based Importance (same as before)
+# Function that plots Tree-Based Importance to show importance of each factor
 def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
     st.header("Important Factors That Helps Building the Customer Groups")
+
+    # build tabs for users to traverse
     cluster_labels = sorted(data["Cluster"].unique())
     tab_labels = [
         ("Outliers" if cl == -1 else f"Customer Group {cl+1}")
@@ -691,6 +654,7 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
 
     tabs = st.tabs(tab_labels)
     
+    # display the plot under each tab
     rf_models = {}
     for tab, cl in zip(tabs, cluster_labels):
         with tab:
@@ -721,6 +685,7 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
                     fontsize=10                         # adjust if you like
                 )
             
+            # plot setup
             ax.set_title(f"Top {top_n} Features for {'Outliers' if cl==-1 else f'Customer Group {cl+1}'}")
             ax.set_xlabel("Features")
             ax.set_ylabel("Importance Score")
@@ -731,7 +696,7 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
     
     return rf_models
 
-# 4a) SHAP Explanation for Custom Point (via Top-Feature Sliders)
+# Plot SHAP Explanation for Custom Point (via Top-Feature Sliders)
 def show_shap_explanation_custom(
     rf_model,
     scaler,
@@ -752,7 +717,7 @@ def show_shap_explanation_custom(
     # 2) Get global means for defaults
     global_means = data[selected_cols].mean()
 
-    # 3) Sliders
+    # 3) Build sliders
     st.write(f"Adjust values for top {top_n} features:")
     raw_vals = {}
     for feat in top_feats:
@@ -817,47 +782,8 @@ def show_shap_explanation_custom(
     # render that
     st.pyplot(fig)
 
-    # # 6) Compute SHAP values once
-    # explainer   = shap.TreeExplainer(rf_model)
-    # shap_vals   = explainer.shap_values(scaled_pt)
-    # # select the right slice of shap_values
-    # if isinstance(shap_vals, list):
-    #     # multi-class: list of arrays
-    #     class_shap = shap_vals[pred]       # shape (n_samples, n_features)
-    # else:
-    #     # single output: array of shape (n_samples, n_features)
-    #     class_shap = shap_vals
-    # # vals = class_shap[0]                   # your custom point's contributions
-    # vals = np.array(class_shap)
-    # if vals.ndim > 1:
-    # # take the first (and only) row
-    #     vals = vals[0]
 
-    # # extract a scalar expected_value
-    # ev_raw = explainer.expected_value
-    # if isinstance(ev_raw, (list, tuple)):
-    #     ev = ev_raw[pred]
-    # else:
-    #     ev = ev_raw
-    # # if it's still an array, grab the first element
-    # if isinstance(ev, np.ndarray):
-    #     ev = float(np.ravel(ev)[0])
-
-    # # 7) Plot Waterfall plot
-    # disp = min(top_n, len(selected_cols))
-
-    # fig = plt.figure()
-    # waterfall_legacy(
-    #     ev,
-    #     vals,                     # full array of shap values, not a single scalar
-    #     feature_names=selected_cols,
-    #     max_display=disp,         # never ask for more than you have
-    #     show=False
-    # )
-    # st.pyplot(fig)
-
-
-# 4b) LIME Explanation for Custom Point (via Top-Feature Sliders)
+# Function that plots LIME Explanation for Custom Point (via Top-Feature Sliders)
 def show_lime_explanation_custom(
     rf_model,
     scaler,
@@ -960,7 +886,7 @@ def show_lime_explanation_custom(
     """
     components.html(wrapper, height=500, scrolling=True)
 
-# 5) 3D Scatter on Raw
+# Function that plots 3D Scatter on Raw
 def plot_3d_clusters_raw(data, selected_cols, top_features):
     st.header("3D Cluster Visualization")
 
@@ -981,23 +907,24 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
     label_map = {}
     ordered_labels = []
 
-    # 1) first handle all non–Outlier clusters
+    # 4) first handle all non–Outlier clusters
     for i, cl in enumerate([c for c in uniques if c != -1]):
         lbl = f"Customer Group {i+1}"
         label_map[cl] = lbl
         ordered_labels.append(lbl)
 
-    # 2) then, if you have outliers, put them last
+    # 5) then, if you have outliers, put them last
     if -1 in uniques:
         label_map[-1] = "Outliers"
         ordered_labels.append("Outliers")
 
-    # 3) rename your table’s index
+    # 6) rename your table’s index
     counts_df.index = [label_map[x] for x in counts_df.index]
 
-    # 4) (optional) reorder rows in the display to match ordered_labels
+    # 7) reorder rows in the display to match ordered_labels
     counts_df = counts_df.reindex(ordered_labels)
 
+    # 8) styling output
     styled = (
         counts_df.style
         .set_caption("**Decision-Tree: Pros & Cons**")
@@ -1032,26 +959,23 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
 
     st.dataframe(styled)
 
-    # st.table(counts_df)
-
     # # get the top 3 features from all the top features got back in the violin plot
-    # top_features=top_features[:3]
 
-    # 3) add a categorical column for plotting
+    # 9) add a categorical column for plotting
     df = data.copy()
     df["Cluster_label"] = df["Cluster"].map(label_map)
 
-    # 4) pick top 3 features
+    # 10) pick top 3 features
     top3 = top_features[:3]
 
-    # 5) pick a discrete palette & map each label to a color
+    # 11) pick a discrete palette & map each label to a color
     palette = px.colors.qualitative.Plotly  # has ~10 distinct colors
     color_map = {
         lbl: palette[i % len(palette)]
         for i, lbl in enumerate(ordered_labels)
     }
 
-    # 6) scatter_3d with discrete legend
+    # 12) scatter_3d with discrete legend
     fig3d = px.scatter_3d(
         df,
         x=top3[0], y=top3[1], z=top3[2],
@@ -1063,7 +987,7 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
     )
     st.plotly_chart(fig3d)
 
-# Clustering Function
+# XAI-related Functions
 #-----------------------------------------------
 #-----------------------------------------------
 # @st.cache(allow_output_mutation=True)
@@ -1075,6 +999,8 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
         bytearray:   lambda _: None,
     }
 )
+
+# Function that load XAI (LIME & SHAP) explainers
 def load_explainers(model, df: pd.DataFrame, feature_names: tuple):
     """
     Builds two SHAP explainers (for P(Yes) and P(No)) + one LIME explainer
@@ -1095,9 +1021,7 @@ def load_explainers(model, df: pd.DataFrame, feature_names: tuple):
     )
     return shap_explainer, lime_explainer
 
-
-
-
+# Function that displays the explanations
 def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_features: int = 10):
     # ─── normalize inputs to 1×n_features DataFrame ───
     if isinstance(inputs, dict):
@@ -1114,7 +1038,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     st.header("Through Explainable AI (XAI):")
 
 
-    # ─── LIME for label=1 (“Yes”) ───
+    # ─── Display LIME output for label=1 (“Yes”) ───
     st.markdown("**1. LIME: Made a local model for your input to highligjt which feature matters the most!**")
     lime_exp = lime_explainer.explain_instance(
         X.values.flatten(),
@@ -1151,7 +1075,6 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
 
 
 
-
 # MAIN CODE
 #-----------------------------------------------
 #-----------------------------------------------
@@ -1161,6 +1084,7 @@ st.set_page_config(
     layout="wide"
 )
 
+# customer css styling
 st.markdown(
     """
     <style>
@@ -1216,18 +1140,19 @@ st.markdown(
 
 # --- CACHED RESOURCE LOADING ---
 @st.experimental_memo
+# function that load the ML predictive models
 def load_models():
-    # Load Decision Tree
+    # Load Decision Tree (or Resampled Model)
     # with open('../../Model/DT_Model_Deploy.pkl', 'rb') as f:
     with open('../../Model/DT_Resampled_Model_Deploy.pkl', 'rb') as f:
         dt_pipeline = pickle.load(f)
         dt_model = dt_pipeline.named_steps['classifier']
-    # Load Random Forest
+    # Load Random Forest (or Resampled Model)
     # with open('../../Model/RF_Model_Deploy.pkl', 'rb') as f:
     with open('../../Model/RF_Resampled_Model_Deploy.pkl', 'rb') as f:
         rf_pipeline = pickle.load(f)
         rf_model = rf_pipeline.named_steps['classifier']
-    # Load XGBoost
+    # Load XGBoost (or Resampled Model)
     # with open('../../Model/XGB_Model_Deploy.pkl', 'rb') as f:
     with open('../../Model/XGB_Resampled_Model_Deploy.pkl', 'rb') as f:
         xgb_pipeline = pickle.load(f)
@@ -1239,6 +1164,7 @@ def load_models():
     }
 
 @st.experimental_singleton
+# functuion that load the data for this app
 def load_data():
     # Load processed data for dashboard
     url = (
@@ -1248,11 +1174,11 @@ def load_data():
     return pd.read_csv(url)
 
 # --- REUSABLE UTILS ---
-
+# Function that makes model prediction based on model input
 def make_prediction(model, user_input):
     return model.predict(user_input)
 
-# Define separate input forms for each model
+# Takes user input for decisiion tree model
 def user_input_form_decision_tree():
     st.markdown("<br>", unsafe_allow_html=True)
     st.subheader('"Tree-based model that makes decisions by splitting data recursively on feature values"')
@@ -1285,7 +1211,7 @@ def user_input_form_decision_tree():
     # Calculate the current day of the year for days_in_year
     day_of_year = datetime.datetime.now().timetuple().tm_yday
 
-
+    # 3) Show input
     # IF USING REGULAR DT MODEL
     # # Assign inputs
     # age = st.slider("What is your Age (18-65)?", min_value=18, max_value=65, value=42, key=0)
@@ -1308,7 +1234,7 @@ def user_input_form_decision_tree():
     days_in_year = st.slider("What is the number of Days in a year did you contact your client?", min_value=0, max_value=365, value=day_of_year, key=5)
 
     
-    # input handling
+    # 4) Input Handling
     age          = float(age)
     balance      = float(balance)
     if housing == "Yes":
@@ -1326,6 +1252,7 @@ def user_input_form_decision_tree():
     else:
         poutcome = 1
 
+    # 5) Return output as dict
     # **NEW**: return a dict instead of a list
     # return {
     #     "age":          age,
@@ -1347,6 +1274,7 @@ def user_input_form_decision_tree():
         "days_in_year": days_in_year,
     }
 
+# Takes user input for random forest (resampled) model
 def user_input_form_random_forest():
     
     st.markdown("<br>", unsafe_allow_html=True)
@@ -1378,6 +1306,7 @@ def user_input_form_random_forest():
     # Get current date
     day_of_year = datetime.datetime.now().timetuple().tm_yday
 
+    # 3) take user input
     # Regular RF Model
     # Assign inputs
     # age = st.slider("What is your Age (18-65)?", min_value=18, max_value=65, value=42, key=10)
@@ -1398,7 +1327,7 @@ def user_input_form_random_forest():
     job_blue_collar = st.selectbox("Does your client have a blue collor job?", ["No", "Yes"], index=0, key=17)  # Default value is 0
     days_in_year = st.slider("What is the number of Days in a year did you contact your client?", min_value=0, max_value=365, value=day_of_year, key=18)
     
-    # input handling
+    # 4) input handling
     age = float(age)
     balance = float(balance)
     if housing == "Yes":
@@ -1426,7 +1355,7 @@ def user_input_form_random_forest():
     elif poutcome=="Success":
         poutcome=1
 
-    # return input values in dict
+    # 5) return input values in dict
     #  IF original model
     # return {
     #     "age":          age,
@@ -1450,6 +1379,7 @@ def user_input_form_random_forest():
         "days_in_year": days_in_year,
     }
 
+# take user input for XGBoost
 def user_input_form_xgboost():
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -1484,6 +1414,7 @@ def user_input_form_xgboost():
     # Mapping dictionary for Yes/No to 1/0
     yes_no_mapping = {"Yes": 1, "No": 0}
 
+    # 3) Take user input
     # IF Regular XGB Model
     # input handling
     # housing = yes_no_mapping[st.selectbox("Do you have any housing loans?", ["No", "Yes"], index=0, key=20)]
@@ -1514,7 +1445,7 @@ def user_input_form_xgboost():
     # job_technician = yes_no_mapping[st.selectbox("Does your client have a blue collar job?", ["No", "Yes"], index=0, key=26)]
 
     
-    # input handling
+    # 4) input handling
     housing = float(housing)
     loan = float(loan)
     duration = float(duration) *60
@@ -1560,8 +1491,7 @@ def user_input_form_xgboost():
     elif job_overall =="Technician":
         technician=1
 
-    # job
-
+    # 5) return output in dict
     # IF Original XGB Model
     # return input values in dict
     # return {
@@ -1592,6 +1522,7 @@ def user_input_form_xgboost():
         "job_technician":   technician
     }
 
+# Function that displays success/failed prediction
 def display_prediction(prediction):
     col1, col2 = st.columns([0.1, 0.9])
     # print(prediction) # for testing
@@ -1611,10 +1542,11 @@ def display_prediction(prediction):
 
 
 # --- PAGE FUNCTIONS ---
-# issues: 
-# better title, into, add navigation to other pages-
+#-----------------------------------------------
+#-----------------------------------------------
+#-----------------------------------------------
 
-
+# Function convert image to base64
 def _img_to_base64(path):
     """Read a local image file and return a base64 data-URI string."""
     with open(path, "rb") as f:
@@ -1622,7 +1554,9 @@ def _img_to_base64(path):
     b64 = base64.b64encode(data).decode()
     return f"data:image/png;base64,{b64}"
 
+# function that builds the homepage layout
 def home_page(models, data, raw_data):
+    # introduction
     st.header("Welcome to the [Term Deposit Subscription Prediction App]!")
     st.markdown("---")
     st.write(
@@ -1641,7 +1575,7 @@ def home_page(models, data, raw_data):
         ),
         (
             "Interactive Dashboard",
-            "Come find out underlying trends and insights via exploratory data analysis (EDA)!",
+            "Find out underlying trends and insights via exploratory data analysis (EDA)!",
             "Interactive Dashboard",
             "Visualizations/Homepage_Icons/dashboard-icon.jpg"
         ),
@@ -1659,14 +1593,14 @@ def home_page(models, data, raw_data):
         ),
     ]
 
+    # displays 4 boxes for the app's functionalities
     cols = st.columns(4, gap="large")
     for col, (title, desc, page_key, img_path) in zip(cols, cards):
         with col:
             # convert the image to base64
             uri = _img_to_base64(img_path)
 
-            # build your card HTML, with the <img> inside
-            
+            # build card HTML, with the <img> inside
             card_html = f"""
             <div style="
                 border:2px solid #ccc;
@@ -1703,6 +1637,7 @@ def home_page(models, data, raw_data):
             st.markdown(card_html, unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
+            # add a page navigation button
             if col.button("Try it out!", key=f"btn_{page_key}"):
                 st.session_state.page = page_key
                 st.experimental_rerun()
@@ -1710,7 +1645,9 @@ def home_page(models, data, raw_data):
     st.markdown("<br><br>", unsafe_allow_html=True)
     # st.write("— Alex 🙂")
 
+# Prediction Page
 def prediction_page(models, data):
+    # introduction
     st.header("Predicting Term Deposit Subscription")
     st.markdown("---")
     st.subheader("Choose an AI model to make predictions!")
@@ -1718,13 +1655,13 @@ def prediction_page(models, data):
     # 0) build full_feature_list once
     full_feature_list = [c for c in data.columns if c != "y"]
 
+    # Build the tabs for users to choose which model
     tabs = st.tabs(list(models.keys()))
     for tab, (name, model) in zip(tabs, models.items()):
         with tab:
             # st.subheader(f"{name} Model")
             # Dispatch to the right input form
 
-            # 3a) get the inputs (dict or 1×9 DataFrame)
             if name == 'Decision Tree':
                 inputs_dict = user_input_form_decision_tree()
             elif name == 'Random Forest':
@@ -1732,45 +1669,25 @@ def prediction_page(models, data):
             else:
                 inputs_dict = user_input_form_xgboost()
 
+            # store input
             inputs = pd.DataFrame([inputs_dict])
-            print(inputs)
+            # print(inputs)
             feature_names = tuple(inputs_dict.keys())
 
+            # button that allos prediction
             if st.button(f"Predict with {name}", key=name):
                 pred = make_prediction(model, inputs)
                 display_prediction(pred)
 
-                # ─────────────────────────────────────────────────
-                # 2) Normalize & infer feature_names from your inputs
-                # ─────────────────────────────────────────────────
-                # if isinstance(inputs, list):
-                #     # assume the list values match the order of full_feature_list
-                #     feature_names = tuple(full_feature_list[: len(inputs)])
-                #     # wrap into a 1×n DataFrame
-                #     inputs = pd.DataFrame([inputs], columns=feature_names)
-
-                # elif isinstance(inputs, dict):
-                #     feature_names = tuple(inputs.keys())
-                #     # optionally wrap into DataFrame if downstream expects it
-                #     inputs = pd.DataFrame([inputs])
-
-                # else:
-                #     # it’s already a DataFrame
-                #     feature_names = tuple(inputs.columns.tolist())
-
-                # ─────────────────────────────────────────────────
-                # 3) Build or fetch your explainers on exactly those features
-                # ─────────────────────────────────────────────────
+                # Load XAI explaianers to prepare for explaining prediction output
                 shap_exp, lime_exp = load_explainers(model, data, feature_names)
 
                 print("XAI:", inputs)
-                # ─────────────────────────────────────────────────
-                # 4) Render your dual‐class SHAP + LIME
-                # ─────────────────────────────────────────────────
                 st.markdown("---")
 
                 # st.markdown("""<br></br>""")
 
+                # Wrap around XAI explanations in an expander
                 with st.expander("🔍 Check how the model makes its decision!", expanded=True):
                     show_explanations(
                         model,
@@ -1779,7 +1696,7 @@ def prediction_page(models, data):
                         lime_exp
                     )
 
-
+# Function displaying the interactive dashboard page
 def dashboard_page(data):
     # ─── Inject CSS for the card shape ─────────────────────────────────
     st.markdown(
@@ -1851,10 +1768,12 @@ def dashboard_page(data):
         unsafe_allow_html=True
     )
 
+    # display introductuin
     st.header("Interactive Dashboard")
     st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
     st.markdown("---")
 
+    # sub function: visually shows KPIs
     def kpi_indicator(label, value, suffix="", color="#000000"):
         fig = go.Figure(go.Indicator(
             mode="number",
@@ -1943,9 +1862,8 @@ def dashboard_page(data):
 
     st.markdown("---")
 
-    # So default is salesperson
+    # different display outpuet for each persona
     if persona =="Marketing Manager":
-        # st.write("You chose: ", persona)
 
         # --- Create our 2×2 grid ---
         row1_col1, row1_col2 = st.columns(2, gap="medium")
@@ -1957,32 +1875,9 @@ def dashboard_page(data):
         # 3. conversion heatmap 
         # 4. sales-based recommendations
 
-        # 1. plot for sales overtime?
-        # 1) Aggregate by month
 
-        # Sales-based recommendation
+        # Top-left box: Marketing-based recommendation
         with row1_col1:
-            
-            # st.markdown('<div class="rec-card">', unsafe_allow_html=True)
-            
-            # # st.title("Marketing-based Recommendations:")
-            # st.markdown("## Marketing-based Recommendations")
-            # st.markdown(
-            #     """
-            #     1. Customers are more likely to subscribe on specific months (Mar, Aug, Nov, Dec).
-
-            #     2. Most customers are around in their early 30s to late 30s.
-
-            #     3. Conversion rate increases a lot when duration goes up, age doesn't play a huge factor.
-
-            #     4. Customers with no loans are more likely to subscribe in when the call was not long.
-
-            #     5. Most customers have cellular samples thus they may not have a lot of time --> need to develop strategies that can make them stay longer.
-
-            #     6. Over 50% of previous successful case still subscribes when we call, focus on these customers. 
-            #     """
-            # )
-            # st.markdown('</div>', unsafe_allow_html=True)
 
             recommendations_html = """
             <div class="rec-card">
@@ -1999,7 +1894,7 @@ def dashboard_page(data):
             """
             st.markdown(recommendations_html, unsafe_allow_html=True)
 
-        # Works both Sales and Marketing
+        # top-right box: display plots for both Sales and Marketing
         with row1_col2:
             st.subheader("Campaign Trend Over Time")
             ts_tab, ms_tab = st.tabs(["Monthly Count","Monthly Success"])
@@ -2011,7 +1906,7 @@ def dashboard_page(data):
                 # monthly succeess rate
                 st.altair_chart(monthly_success_altair(data), use_container_width=True)
     
-        # Works both Sales and Marketing
+        # bottom-left box: works both Sales and Marketing
         with row2_col1:
             st.subheader("Outcome by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
@@ -2026,11 +1921,7 @@ def dashboard_page(data):
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
 
-        # Change this:
-
-        # Clustering: 
-
-        # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
+        # Bottom-right box: distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
             st.subheader("Distributions & Heatmaps")
             dist_tab, heat_tab, loan_heat_tab = st.tabs([
@@ -2049,9 +1940,8 @@ def dashboard_page(data):
                 # Plot 7: conversion heatmap by loan type & duration (Altair)
                 st.altair_chart(plot_loans_duration_heatmap(data), use_container_width=True)
 
-
+    # if persona is salesperson
     elif persona =="Salesperson":
-        # st.write("You chose: ", persona)
 
         # --- Create our 2×2 grid ---
         row1_col1, row1_col2 = st.columns(2, gap="medium")
@@ -2063,28 +1953,8 @@ def dashboard_page(data):
         # 3. conversion heatmap 
         # 4. sales-based recommendations
 
-        # 1. plot for sales overtime?
-        # 1) Aggregate by month
-
-        # Sales-based recommendation
+        # Top-left box: Sales-based recommendation
         with row1_col1:
-            # st.title("Sales-based Recommendations:")
-
-            # st.markdown(
-            #     """
-            #     1. If the client has past subscribed our product before, they are way more likely to subscribe again!
-
-            #     2. Choose to contact the clients on either summer or around Christmas.
-
-            #     3. Don't worry about clients who owed us! 40% of clients that has loans still subscibes to us!
-
-            #     4. Over 50% of previous successful case still subscribes when we call, focus on these customers. 
-
-            #     5. Call as long as possible (ideally over 9 minutes). Call duration is the most important factor determining the campaign outcome!
-
-            #     6. Most customers have cellular samples thus they may not have a lot of time, you need to attract their interest quickly!
-            #     """
-            # )
 
             recommendations_html = """
             <div class="rec-card">
@@ -2101,7 +1971,7 @@ def dashboard_page(data):
             """
             st.markdown(recommendations_html, unsafe_allow_html=True)
 
-        # Works both Sales and Marketing
+        # Top-right box: display plots for both Sales and Marketing
         with row1_col2:
             st.subheader("Campaign Trend Over Time")
             ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
@@ -2112,7 +1982,7 @@ def dashboard_page(data):
                 # monthly succeess rate
                 st.altair_chart(monthly_success_altair(data), use_container_width=True)
     
-        # Works both Sales and Marketing
+        # Bottom-left box: display plots for both Sales and Marketing
         with row2_col1:
             st.subheader("Outcome by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
@@ -2127,7 +1997,7 @@ def dashboard_page(data):
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
 
-        # Works both Sales and Marketing
+        # Bottom-right box: displays plot for both Sales and Marketing
         # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
             st.subheader("Outcome Based on Past Campaign's Outcomes")
@@ -2135,29 +2005,23 @@ def dashboard_page(data):
                 "No Past Campaign","Successful Past Campaign", "Inconclusive Past Campaign"
             ])
 
-
-            # Previous vs conversion rate 
-
-
             with no_past_tab:
-                # Plot 5: age KDE (Altair)
-                # st.altair_chart(kde_age_distribution(data), use_container_width=True)
+                # Plot 5: age donut for past failed scenarios
                 st.plotly_chart(previous_donut(df=data, filter_val=0), use_container_width=True)
 
             with past_tab:
-                # Plot 6: conversion heatmap by age & duration (Altair)
-                # st.altair_chart(plot_age_duration_heatmap(data), use_container_width=True)
+                # Plot 6: age donut for past success scenarios
                 st.plotly_chart(previous_donut(df=data, filter_val=1), use_container_width=True)
 
             with inconclusive_tab:
+                # Plot 7: age donut for past inconclusive scenarios
                 st.plotly_chart(previous_donut(df=data, filter_val=0.5), use_container_width=True)
 
-
-
+# Displays clustering page
 def clustering_page(data): 
     st.header("Customer Segmentation")
     
-    # options for users to choose 
+    # let users to choose the features they want to use for clustering
     st.subheader('Feature Selection')
 
     # 1) Define your groups here:
@@ -2204,7 +2068,7 @@ def clustering_page(data):
         # "Employment Information":  "e.g. different areas of jobs"
     }
 
-    # 2) Let the user pick groups
+    # 2) Let the user pick feature groups
     group_names = list(FEATURE_GROUPS.keys())
     chosen_groups = st.multiselect("Select at least one feature group below for customer segmentation:", group_names)
 
@@ -2222,6 +2086,7 @@ def clustering_page(data):
         display_df = pd.DataFrame(rows)
         display_df.index = np.arange(1, len(display_df)+1)
 
+        # 4) display selected feature group(s)
         st.subheader("The Features Groups Selected:")
         st.table(display_df)
 
@@ -2239,12 +2104,12 @@ def clustering_page(data):
                 st.session_state.pop(key, None)
             st.session_state["last_selected_cols"] = selected_cols
 
-        # 4) Require at least two features
+        # 5) Require at least two features
         if len(selected_cols) < 2:
             st.error("Pick at least two features to cluster.")
             # return
         else:
-            # 5) Scale & cluster
+            # 6) Scale & cluster
             # only once per session, initialize our flags/holders
             if 'clustering_done' not in st.session_state:
                 st.session_state['clustering_done']   = False
@@ -2254,15 +2119,8 @@ def clustering_page(data):
 
             scaler = StandardScaler()
             X_scaled = scaler.fit_transform(data[selected_cols])
-            # X_scaled=data[selected_cols]
 
-
-            # st.subheader("Clustering")
-            # num_clusters = st.slider("Number of clusters", 2, 10, 3)
-            # kmeans = KMeans(n_clusters=num_clusters, random_state=42)
-            # data["Cluster"] = kmeans.fit_predict(X_scaled)
-
-            # 1) When the user clicks Run Clustering, do the work *once*
+            # 7) When the user clicks Run Clustering, do the work *once*
             if st.button("Run HDBSCAN Clustering Algorithm for Customer Segmentation"):
                 # a) cluster
                 clusterer = hdbscan.HDBSCAN(
@@ -2280,7 +2138,7 @@ def clustering_page(data):
                 st.session_state["rf_model"]          = rf
                 st.session_state["scaler"]            = scaler
 
-            # 2) If we’ve ever clicked Run Clustering, show the explainers *always*
+            # 8) If users cicked ever clicked Run Clustering bitton, show the explainers *always*
             if st.session_state['clustering_done']:
                 # restore
                 data["Cluster"] = st.session_state["cluster_labels"]
@@ -2288,10 +2146,6 @@ def clustering_page(data):
                 scaler          = st.session_state["scaler"]
                 X_scaled        = scaler.transform(data[selected_cols])
 
-                # Right order, 
-                # 1. showing 3d clusters
-                # 2. show feature means
-                # 3. show violin plots
                 st.markdown("---")
                 show_example_table(data,selected_cols)
                 st.markdown("---")
@@ -2313,21 +2167,7 @@ def clustering_page(data):
                     # show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
                     show_lime_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
 
-
-                # # now call your five widgets exactly as before:
-                # # 1. Show table of feature means
-                # show_cluster_feature_means_raw(data, selected_cols)
-                # # 2. Violin plots of top features
-                # top_features=plot_violin_top_features_raw(data, selected_cols, top_n=3)
-                # # 3. Use RF's feature importance to find important factor of clustering
-                # plot_tree_feature_importance( data, X_scaled, selected_cols )
-                # # 4. SHAP & LIME Explanations
-                # show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
-                # show_lime_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
-                # # 5. Plot 3D clusters
-                # plot_3d_clusters_raw(data, selected_cols, top_features)
-
-
+# Showing the data overview & export page
 def overview_page(data, preprocessed):
     
     st.header("Data Overview & Export")
@@ -2338,6 +2178,7 @@ def overview_page(data, preprocessed):
     
     st.markdown("---")
 
+    # 2 box with a divider separating them
     col1, col_div, col2 = st.columns([1, 0.02, 1])
 
     st.markdown("---")
@@ -2435,10 +2276,10 @@ def overview_page(data, preprocessed):
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
     
-
+# Displays the final acknowledgement page
 def acknowledgement_page(data):
-    # st.header("ACKNOWLEDGEMENT PAGE")
-    # st.subheader("TBA")
+
+    # display text
     st.header("Acknowledgements")
     st.markdown("---")
     ack_html = """
@@ -2446,18 +2287,24 @@ def acknowledgement_page(data):
     performed exploratory data analysis, and developed the machine learning models. I sincerely thank them for their effort and hard work. 
     I would also like to thank my course instructor **Dr. Jay Newby** for his guidance and mentorship.
     <br><br>
+    This app is made with a purpose to applied our research in a high level, if you are interested to learn more about the scientific details of our work, please visit the <a href="https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project" target="_blank"><strong>User Guide</strong></a>!
+    <br><br>
     Additionally, I want to acknowledge **Sérgio Moro**, **P. Cortez**, and **P. Rita** for sharing the UCI ML Bank Telemarketing Dataset which is the fundament backbomne of this project.
     <br><br>
     Last but not least, shout out to the user test group [TEMP NAMES]. Their opinions and feedback on this project should be recognized.
+
     """
     st.markdown(ack_html, unsafe_allow_html=True)
 
     st.image("Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
 
 # --- MAIN APP ---
+#-----------------------------------------------
+#-----------------------------------------------
+#-----------------------------------------------
 
 
-# at the top of main()
+# global dictionary to link page and index
 PAGE_TO_INDEX = {
     "Home":                              0,
     "Deposit Subscription Prediction":  1,
@@ -2467,49 +2314,37 @@ PAGE_TO_INDEX = {
     "Acknowledgements":                 5,
 }
 
+# The main function that puts everything together
 def main():
     # st.title("Bank Term Deposit App")
 
+    # only update page, sidebar will be sync iin a different way
     if "page" not in st.session_state:
         st.session_state.page = "Home"
     # if "sidebar_choice" not in st.session_state:
     #     st.session_state.sidebar_choice = "Home"
 
-    # 1) define a sidebar callback
+    # define a sidebar callback
     def sidebar_navigate():
         st.session_state.page = st.session_state.sidebar_choice
 
+    # Sync sidebar here
     def _sync_page_with_sidebar(new_choice):
         # ignore new_choice, just copy over the widget state
         st.session_state.page = st.session_state.sidebar_choice
 
+    # display sidebar
     with st.sidebar:
         # title
         st.title("Deposit Subscription Prediction Data Science Project")
         st.caption("v1.1.0 • Data updated: 2025-06-28") 
 
-        # 1) Logo
-        # st.image("Visualizations/title_icon_temp.gif", width=300)
-
-        # 2) inline link
-        # st.markdown(
-        #     "[Source Code](https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project) • "
-        #     "[Contact Us (for any questions)! ](https://www.linkedin.com/in/alex-mak-824187247/)",
-        #     unsafe_allow_html=True
-        # )
         st.markdown("---")
-
-        # project_list=['Term Deposit Subscription Prediction','Interactive Dashboard', 'Dataset Overview']
-
-
-        # 3) Section headers + pickers
-        # st.markdown("### 📁 Functionalities")
-        # # project = st.selectbox("", project_list, key="project")
-        # # choice=project
 
         current = st.session_state.page
         idx     = PAGE_TO_INDEX.get(current, 0)
 
+        # option menu for users to select pages to navigate
         choice = option_menu(
             menu_title=None,
             # options=["Home", "Deposit Subscription Prediction", "Interactive Dashboard", "Customer Segmentation", "Data Overview & Export", "Acknowledgements"],
@@ -2527,11 +2362,9 @@ def main():
         if choice != current:
             st.session_state.page = choice
 
-        # print(choice)
-        # if st.session_state.page != choice:
-        #     st.session_state.page = choice
 
-        # --- Help & feedback ---
+
+        # --- Help & feedback Expander---
         with st.expander("❓ Help & Docs"):
             st.write("- [User Guide](https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project)")
             st.write("- [Source Code](https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/tree/main/Code)")
@@ -2541,27 +2374,23 @@ def main():
 
     # choice = st.sidebar.radio("Go to", ["Prediction", "Dashboard"] )
 
+    # init functions: load models and data
     models = load_models()
     data   = load_data()
 
     raw_data=pd.read_csv("https://raw.githubusercontent.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/refs/heads/main/Data/input.csv", sep=";")
 
-    # url = (
-    #     "https://raw.githubusercontent.com/"
-    #     "Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/refs/heads/main/Data/processed_Input.csv"
-    # )
-    # return pd.read_csv(url)
-
+    # get current page
     page = st.session_state.page
 
 
+    # back page button at the top of every page except home page
     if st.session_state.page != "Home":
         if st.button("← Back to Home"):
             st.session_state.page = "Home"
             st.experimental_rerun()
 
-
-
+    # page navigation based on user's selection
     if page == "Home":
         home_page(models, data, raw_data)
     elif page == "Deposit Subscription Prediction":
