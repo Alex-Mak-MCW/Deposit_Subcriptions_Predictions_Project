@@ -1,0 +1,13 @@
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+scikit-learn
+plotly
+altair
+matplotlib-venn
+streamlit-option-menu
+shap
+lime
+hdbscan
