@@ -34,7 +34,7 @@ import streamlit.components.v1 as components
 
 import base64
 
-st.write("👉 scikit-learn version:", sckikit-learn.__version__)
+st.write("👉 scikit-learn version:", scikit-learn.__version__)
 
 # -----------------------------------------------
 
