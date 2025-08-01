@@ -13,7 +13,7 @@ from matplotlib_venn import venn2
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
-import scikit-learn as sklearn
+# import scikit-learn as sklearn
 
 # clustering import
 import plotly.figure_factory as ff
