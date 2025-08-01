@@ -991,14 +991,15 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
 #-----------------------------------------------
 #-----------------------------------------------
 # @st.cache(allow_output_mutation=True)
-@st.cache(
-    allow_output_mutation=True,
-    hash_funcs={
-        pd.DataFrame: lambda _: None,  # DataFrame unhashable → ignore it
-        dict:        lambda _: None,   # same for dict/list
-        bytearray:   lambda _: None,
-    }
-)
+@st.cache_data
+# @st.cache(
+#     allow_output_mutation=True,
+#     hash_funcs={
+#         pd.DataFrame: lambda _: None,  # DataFrame unhashable → ignore it
+#         dict:        lambda _: None,   # same for dict/list
+#         bytearray:   lambda _: None,
+#     }
+# )
 
 # Function that load XAI (LIME & SHAP) explainers
 def load_explainers(model, df: pd.DataFrame, feature_names: tuple):
