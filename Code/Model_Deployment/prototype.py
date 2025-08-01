@@ -1139,7 +1139,8 @@ st.markdown(
 
 
 # --- CACHED RESOURCE LOADING ---
-@st.experimental_memo
+# @st.experimental_memo
+@st.cache_data
 # function that load the ML predictive models
 def load_models():
     # Load Decision Tree (or Resampled Model)
