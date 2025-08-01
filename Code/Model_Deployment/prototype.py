@@ -1164,7 +1164,8 @@ def load_models():
         'XGBoost': xgb_model
     }
 
-@st.experimental_singleton
+# @st.experimental_singleton
+@st.cache_resource
 # functuion that load the data for this app
 def load_data():
     # Load processed data for dashboard
