@@ -35,10 +35,10 @@ from sklearn.linear_model import LogisticRegression
 
 import base64
 
-
-import streamlit as st, sklearn, numpy
-st.sidebar.write("▶︎ sklearn.__version__:", sklearn.__version__)
-st.sidebar.write("▶︎ numpy.__version__:  ", numpy.__version__)
+# deployment check
+# import streamlit as st, sklearn, numpy
+# st.sidebar.write("▶︎ sklearn.__version__:", sklearn.__version__)
+# st.sidebar.write("▶︎ numpy.__version__:  ", numpy.__version__)
 
 # -----------------------------------------------
 
