@@ -31,10 +31,10 @@ from lime.lime_tabular import LimeTabularExplainer
 import hdbscan
 from shap.plots._waterfall import waterfall_legacy
 import streamlit.components.v1 as components
+from sklearn.linear_model import LogisticRegression
 
 import base64
 
-st.write("👉 scikit-learn version:", scikit-learn.__version__)
 
 # -----------------------------------------------
 
@@ -206,7 +206,16 @@ def contact_channel_pie(df, filter_col="y", filter_val=1):
         labels=labels,
         values=counts,
         textinfo="label+value+percent",
-        insidetextorientation="radial"
+        textposition="inside",  
+        insidetextorientation="radial",
+        marker=dict(
+            colors=["#EF553B", "#636EFA"],    # same two colors
+            line=dict(width=1, color="white")
+        ),
+        textfont=dict(
+            color=["white", "white"],         # white text on both slices
+            size=14
+        )
     ))
     fig.update_traces(marker=dict(line=dict(width=1, color="white")))
     fig.update_layout(
@@ -492,6 +501,52 @@ def previous_donut(df, filter_col="poutcome", filter_val=1):
 ## Clustering-related Functions
 ## -----------------------------------------------
 ## -----------------------------------------------
+
+@st.cache_data(show_spinner=False)
+def get_scaled(data: pd.DataFrame, cols: list):
+    scaler = StandardScaler()
+    Xs = scaler.fit_transform(data[cols])
+    return scaler, Xs
+
+@st.cache_data(show_spinner=False)
+def get_labels(Xs: np.ndarray):
+    clusterer = hdbscan.HDBSCAN(
+        min_cluster_size=max(2, int(round(Xs.shape[0] / 100))),
+        cluster_selection_method='eom'
+    )
+    return clusterer.fit_predict(Xs)
+
+@st.cache_resource(show_spinner=False)
+def get_surrogate(labels: np.ndarray, Xs: np.ndarray):
+    rf_dict = {}
+    for cl in np.unique(labels):
+        y_bin = (labels == cl).astype(int)
+        rf = RandomForestClassifier(n_estimators=5, random_state=42)
+        rf.fit(Xs, y_bin)
+        rf_dict[int(cl)] = rf
+    return rf_dict
+
+@st.cache_resource(show_spinner=False)
+def get_multi_surrogate(Xs: np.ndarray, labels: np.ndarray, max_samples: 50):
+    """Train one RandomForest to predict all cluster labels at once."""
+    n = min(max_samples, len(labels))
+    # reproducible sampling
+    idx = np.random.RandomState(42).choice(len(labels), size=n, replace=False)
+    X_small = Xs[idx]
+    y_small = labels[idx]
+
+    rf_small = RandomForestClassifier(
+        n_estimators=5,   # fewer trees
+        max_depth=5,       # shallower trees
+        random_state=42,
+        n_jobs=-1
+    )
+    rf_small.fit(X_small, y_small)
+    return rf_small
+
+
+
+
 
 # Function to perform HDBScan clustering algorithm
 def auto_hdbscan(X, min_size=10):
@@ -794,80 +849,63 @@ def show_lime_explanation_custom(
     selected_cols: list,
     top_n: int = 5
 ):
-    st.subheader("LIME Explanation for Added Custom Customer")
+    st.subheader("Adjust the values for your client!")
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
     top_feats = importances.nlargest(top_n).index.tolist()
-
-    # 2) Get global means for defaults
     global_means = data[selected_cols].mean()
 
-    # 3) Sliders
-    st.write(f"Adjust values for top {top_n} features:")
-    raw_vals = {}
-    for feat in top_feats:
-        lo = data[feat].min()
-        hi = data[feat].max()
-        mean = global_means[feat]
+    # 2) Collect slider inputs inside a FORM
+    with st.form("lime_form"):
+        st.markdown("#### Use the Table Above to Refer to the Right Features:")
+        raw_vals = {}
+        for feat in top_feats:
+            lo, hi = float(data[feat].min()), float(data[feat].max())
+            default = float(global_means[feat])
+            if feat == "balance":
+                raw_vals[feat] = st.slider(feat, lo, hi, default, step=0.01, format="%.2f")
+            else:
+                raw_vals[feat] = st.slider(feat, int(lo), int(hi), int(default), step=1, format="%d")
+        submit = st.form_submit_button("Run Customer Group Assignment Prediction")
 
-        if feat == "balance":
-            # continuous slider
-            raw_vals[feat] = st.slider(
-                label=feat,
-                min_value=float(lo),
-                max_value=float(hi),
-                value=float(mean),
-                step=0.01,
-                format="%.2f",
-                key=f"slider_{feat}"
-            )
-        else:
-            # **integer** slider
-            raw_vals[feat] = st.slider(
-                label=feat,
-                min_value=int(lo),
-                max_value=int(hi),
-                value=int(round(mean)),
-                step=1,
-                format="%d",              # <-- force integer formatting
-                key=f"slider_{feat}"
-            )
+    # 3) Only on submit do you build & show LIME
+    if not submit:
+        return
 
-    # 4) Build and scale the point
-    raw_point = np.array([raw_vals.get(f, global_means[f]) 
-                          for f in selected_cols]).reshape(1, -1)
+    raw_point = np.array([ raw_vals.get(f, global_means[f]) 
+                           for f in selected_cols ]).reshape(1, -1)
     scaled_pt = scaler.transform(raw_point)
 
-    # 5) Predict label & proba
-    pred_label = rf_model.predict(scaled_pt)[0]
-    # get proba array in the model's class order:
-    probas     = rf_model.predict_proba(scaled_pt)[0]
-
-    # 6) Align class_names with rf_model.classes_
-    sk_classes = list(rf_model.classes_)  # e.g. [-1, 0, 2]
-    class_names = [
-        "Outliers" if cid == -1 else f"Group {cid+1}"
-        for cid in sk_classes
-    ]
-    # find the index of our predicted label in that list
+    # 4) Predict & display header
+    pred_label = int(rf_model.predict(scaled_pt)[0])
+    sk_classes = list(rf_model.classes_)
     pred_index = sk_classes.index(pred_label)
+    label_map = {cid: ("Outliers" if cid==-1 else f"Group {cid+1}") 
+                 for cid in sk_classes}
+    class_names = [label_map[c] for c in sk_classes]
 
-    # 7) Show textual prediction
-    st.write(f"**Predicted Customer Group:** {class_names[pred_index]} (probability = {probas[pred_index]*100:.0f}%)")
+    st.write(f"**Predicted Group:** {label_map[pred_label]}  "
+             f"(p={rf_model.predict_proba(scaled_pt)[0][pred_index]:.2f})")
     st.markdown("---")
 
-    # 8) Build LIME explainer & explanation
+    st.markdown("### Explained by Explainable AI (XAI)")
+
+    # 5) Build the LIME explainer on a small sample
+    sample = data[selected_cols].values
+    if len(sample) > 300:
+        sample = sample[np.linspace(0, len(sample)-1, 300, dtype=int)]
+
     explainer = LimeTabularExplainer(
-        training_data      = data[selected_cols].values,
+        training_data      = sample,
         feature_names      = selected_cols,
-        class_names        = class_names,       # aligned now
+        class_names        = class_names,
         discretize_continuous=True
     )
     exp = explainer.explain_instance(
         raw_point[0],
         lambda x: rf_model.predict_proba(scaler.transform(x)),
-        labels=(pred_index,),
+        labels=(pred_index,),    # only the predicted class
         num_features=top_n
     )
 
@@ -881,10 +919,10 @@ def show_lime_explanation_custom(
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         display: flex;
         flex-wrap: wrap;
-        gap: 50px;
-        align-items: flex-start;
+        justify-content: space-between;
+        gap: 200px;          /* ↑ doubled the gap */
     ">
-      {html}
+    {html}
     </div>
     """
     components.html(wrapper, height=500, scrolling=True)
@@ -892,100 +930,44 @@ def show_lime_explanation_custom(
 # Function that plots 3D Scatter on Raw
 def plot_3d_clusters_raw(data, selected_cols, top_features):
     st.header("3D Cluster Visualization")
+    
+    # pick the top 3 features
+    top3 = top_features[:3]
 
-    # 1) show number of clusters
-    n_clusters = data["Cluster"].nunique()
-    st.markdown(f"**Number of Groups:** {n_clusters}")
-
-    # 2) show the counts table
+    # compute raw counts per cluster
     counts = data["Cluster"].value_counts().sort_index()
-    counts_df = (
-        counts
-        .rename_axis("cluster_label")
-        .reset_index(name="Count")
-        .set_index("cluster_label")
-    )
-    # build human labels & ordered list
-    uniques = list(counts_df.index)
-    label_map = {}
+
+    # build label map with counts baked in
     ordered_labels = []
+    label_map = {}
+    # first real clusters
+    non_outliers = [c for c in counts.index if c != -1]
+    for i, cl in enumerate(non_outliers):
+        label = f"Customer Group {i+1} ({counts[cl]})"
+        label_map[cl] = label
+        ordered_labels.append(label)
+    # then outliers last, if any
+    if -1 in counts.index:
+        label = f"Outliers ({counts[-1]})"
+        label_map[-1] = label
+        ordered_labels.append(label)
 
-    # 4) first handle all non–Outlier clusters
-    for i, cl in enumerate([c for c in uniques if c != -1]):
-        lbl = f"Customer Group {i+1}"
-        label_map[cl] = lbl
-        ordered_labels.append(lbl)
-
-    # 5) then, if you have outliers, put them last
-    if -1 in uniques:
-        label_map[-1] = "Outliers"
-        ordered_labels.append("Outliers")
-
-    # 6) rename your table’s index
-    counts_df.index = [label_map[x] for x in counts_df.index]
-
-    # 7) reorder rows in the display to match ordered_labels
-    counts_df = counts_df.reindex(ordered_labels)
-
-    # 8) styling output
-    styled = (
-        counts_df.style
-        .set_caption("**Decision-Tree: Pros & Cons**")
-        .set_table_styles([
-            # Header styling
-            {
-                "selector": "thead th",
-                "props": [
-                ("background-color", "#4B8BBE"),
-                ("color", "white"),
-                ("font-size", "1.3em"),       # larger header text
-                ("text-align", "center"),     # center header
-                ("padding", "0.6em")
-                ]
-            },
-            # Body cells: font size and center
-            {
-                "selector": "tbody td",
-                "props": [
-                ("font-size", "1.1em"),       # bump up body text
-                ("text-align", "center"),     # center cell text
-                ("padding", "0.5em")
-                ]
-            },
-            # Zebra-striping
-            {
-                "selector": "tbody tr:nth-child(even)",
-                "props": [("background-color", "#f9f9f9")]
-            }
-        ])
-    )
-
-    st.dataframe(styled)
-
-    # # get the top 3 features from all the top features got back in the violin plot
-
-    # 9) add a categorical column for plotting
+    # map each row’s numeric cluster to its new label
     df = data.copy()
     df["Cluster_label"] = df["Cluster"].map(label_map)
 
-    # 10) pick top 3 features
-    top3 = top_features[:3]
+    # pick a palette
+    palette = px.colors.qualitative.Plotly
+    color_map = {lbl: palette[i % len(palette)] for i,lbl in enumerate(ordered_labels)}
 
-    # 11) pick a discrete palette & map each label to a color
-    palette = px.colors.qualitative.Plotly  # has ~10 distinct colors
-    color_map = {
-        lbl: palette[i % len(palette)]
-        for i, lbl in enumerate(ordered_labels)
-    }
-
-    # 12) scatter_3d with discrete legend
+    # now scatter_3d — legend entries will be your labels-with-counts
     fig3d = px.scatter_3d(
         df,
         x=top3[0], y=top3[1], z=top3[2],
         color="Cluster_label",
         category_orders={"Cluster_label": ordered_labels},
         color_discrete_map=color_map,
-        title=f"3D view of Customer Groups & Outliers ",
+        title="3D view of Customer Groups & Outliers",
         width=700, height=500
     )
     st.plotly_chart(fig3d)
@@ -1005,15 +987,16 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
 # )
 
 # Function that load XAI (LIME & SHAP) explainers
-def load_explainers(model, df: pd.DataFrame, feature_names: tuple):
+@st.cache_resource
+def load_explainers(_model, _df: pd.DataFrame, feature_names: tuple):
     """
     Builds two SHAP explainers (for P(Yes) and P(No)) + one LIME explainer
     all on exactly the same feature set.
     """
-    X = df.loc[:, list(feature_names)]
+    X = _df.loc[:, list(feature_names)]
     # SHAP: single‐output explainer for P(Yes)
     shap_explainer = shap.Explainer(
-        lambda data: model.predict_proba(data)[:, 1],
+        lambda data: _model.predict_proba(data)[:, 1],
         X
     )
     # LIME: full classifier explainer (we’ll ask for label=1 later)
@@ -1614,7 +1597,7 @@ def home_page(models, data, raw_data):
             <div style="
                 border:2px solid #ccc;
                 border-radius:8px;
-                padding:16px 16px 24px 16px;    /* extra 8px bottom padding */
+                padding:8px 8px 16px 8px;    /* extra 8px bottom padding */
                 height:300px;
                 display:flex;
                 flex-direction:column;
@@ -1649,7 +1632,8 @@ def home_page(models, data, raw_data):
             # add a page navigation button
             if col.button("Try it out!", key=f"btn_{page_key}"):
                 st.session_state.page = page_key
-                st.experimental_rerun()
+                # st.experimental_rerun()
+                st.rerun()
 
     st.markdown("<br><br>", unsafe_allow_html=True)
     # st.write("— Alex 🙂")
@@ -1714,7 +1698,7 @@ def dashboard_page(data):
         .kpi-card {
           background-color: #ffffff;
           border-radius: 12px;
-          padding: 1rem;
+          padding: 1rem 0;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           text-align: center;
           margin-bottom: 1rem;
@@ -1723,6 +1707,25 @@ def dashboard_page(data):
         .kpi-card .js-plotly-plot .plotly {
           background-color: transparent !important;
         }
+        .kpi-card section[data-testid="stPlotlyChart"] {
+        margin: 0 auto !important;
+        }
+
+        /* 1) Reset the surrounding Streamlit container */
+        section[data-testid="stPlotlyChart"] {
+        background: none !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        margin-bottom: 1rem !important;
+        }
+
+        /* 2) Apply a semi-transparent white “card” just behind the plot area */
+        section[data-testid="stPlotlyChart"] .js-plotly-plot .plotly {
+        background-color: rgba(255,255,255,0.5) !important;
+        border-radius: 8px !important;
+        padding: 1rem !important;
+        }
+
 
         [data-testid="stMarkdownContainer"] h4 {
         background-color: #393939;
@@ -1756,22 +1759,7 @@ def dashboard_page(data):
         padding-left: 1.2rem;
         }
 
-        /* NEW: style every Altair chart like a box */
-        div[data-testid="stVegaLiteChart"],
-        div[data-testid="stPlotlyChart"],
-        div[data-testid="stPyplot"] {
-        background: #ffffff !important;
-        border-radius: 12px !important;
-        padding: 1rem !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
-        margin-bottom: 1rem !important;
-        }
 
-        /* make sure the chart canvas is transparent so the white shows through */
-        div[data-testid="stPlotlyChart"] .plotly,
-        div[data-testid="stVegaLiteChart"] svg {
-        background-color: transparent !important;
-        }
         </style>
         """,
         unsafe_allow_html=True
@@ -1795,7 +1783,7 @@ def dashboard_page(data):
                 "font": {"size": 48, "color": color},     # number in your colour
                 "suffix": suffix
             },
-            domain={"x": [0,1], "y": [0,1]}
+            domain={"x": [0.2,0.7], "y": [0,1]}
         ))
         fig.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",  
@@ -1814,10 +1802,10 @@ def dashboard_page(data):
 
     # Col 1: persona selector + metric
     with k1:
-        st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
+        # st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
         persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
         st.metric("Most Important Factor:", "Call Duration")
-        st.markdown('</div>', unsafe_allow_html=True)
+        # st.markdown('</div>', unsafe_allow_html=True)
 
     # Col 2: Conversion Rate
     with k2:
@@ -1837,7 +1825,7 @@ def dashboard_page(data):
             )
         else:
             fig = kpi_indicator(
-                "Avg. Duration of Success (mins)",
+                "Avg. Success Duation (mins)",
                 round(data[data['y']==1]['duration'].mean()/60,2),
                 "", color="#76b5c5"
             )
@@ -1856,12 +1844,12 @@ def dashboard_page(data):
         st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
         if persona == 'Marketing Manager':
             fig = kpi_indicator(
-                "Avg. Acct. Balance for Success",
+                "Avg. Balance for Success",
                 round(data[data['y']==1]['balance'].mean(),2), color="#abdbe3"
             )
         else:
             fig = kpi_indicator(
-                "Avg Past Success Rate",
+                "Avg. Past Success Rate",
                 round(data[data['y']==1]['poutcome'].mean()*100,2),
                 "%", color="#1e81b0"
             )
@@ -1897,7 +1885,7 @@ def dashboard_page(data):
                 <li>Conversion rate increases a lot when duration goes up, age doesn't play a huge factor.</li>
                 <li>Customers with no loans are more likely to subscribe when the call was not long.</li>
                 <li>Most customers have cellular samples thus they may not have a lot of time → need to develop strategies that can make them stay longer.</li>
-                <li>Over 50% of previous successful cases still subscribe when we call; focus on these customers.</li>
+                <li>Over 50% of previous successful cases still subscribe when we call; focus on them.</li>
             </ul>
             </div>
             """
@@ -1909,10 +1897,14 @@ def dashboard_page(data):
             ts_tab, ms_tab = st.tabs(["Monthly Count","Monthly Success"])
             with ts_tab:
                 # daily number of success over time plot
+                # st.markdown('<div class="box-card">', unsafe_allow_html=True)
                 st.altair_chart(monthly_line_altair(data), use_container_width=True)
+                # st.markdown('</div>', unsafe_allow_html=True)
                 # st.altair_chart(daily_line_altair(data), use_container_width=True)
             with ms_tab:
                 # monthly succeess rate
+                # st.markdown('<div class="box-card">', unsafe_allow_html=True)
+                # st.markdown('</div>', unsafe_allow_html=True)
                 st.altair_chart(monthly_success_altair(data), use_container_width=True)
     
         # bottom-left box: works both Sales and Marketing
@@ -1969,10 +1961,10 @@ def dashboard_page(data):
             <div class="rec-card">
             <h2>Sales-based Recommendations</h2>
             <ul>
-                <li>If the client has past subscribed our product before, they are way more likely to subscribe again!</li>
+                <li>If the client subscribed our product before, they are more likely to subscribe again!</li>
                 <li>Choose to contact the clients on either summer or around Christmas.</li>
                 <li>Don't worry about clients who owed us! 40% of clients that has loans still subscibes to us!</li>
-                <li>Over 50% of previous successful case still subscribes when we call, focus on these customers.</li>
+                <li>Over 50% of previous successful case still subscribes when we call, focus on them.</li>
                 <li>Call as long as possible (ideally over 9 minutes). Call duration is the most important factor determining the campaign outcome!</li>
                 <li>Most customers have cellular samples thus they may not have a lot of time, you need to attract their interest quickly!</li>
             </ul>
@@ -1982,6 +1974,7 @@ def dashboard_page(data):
 
         # Top-right box: display plots for both Sales and Marketing
         with row1_col2:
+            # st.markdown('<div class="box-card">', unsafe_allow_html=True)
             st.subheader("Campaign Trend Over Time")
             ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
             with ts_tab:
@@ -1990,6 +1983,7 @@ def dashboard_page(data):
             with ms_tab:
                 # monthly succeess rate
                 st.altair_chart(monthly_success_altair(data), use_container_width=True)
+            # st.markdown('</div>', unsafe_allow_html=True)
     
         # Bottom-left box: display plots for both Sales and Marketing
         with row2_col1:
@@ -2035,146 +2029,191 @@ def clustering_page(data):
 
     # 1) Define your groups here:
     FEATURE_GROUPS = {
-        "Personal Information": [
-            "age", "education", "balance", "contact_telephone"
-        ],
-        "Loans": [
-            "housing", "loan", "default"
-        ],
-        "Campaign Metrics": [
-            "day", "month", "duration", "campaign", "pdays",
-            "previous", "poutcome", "days_in_year"
-        ],
-        # "Contact Information": [
-        #     "contact_telephone"
-        # ],
-        # "Marital Status": [
-        #     "marital_divorced", "marital_married", "marital_single"
-        # ],
-        # "Employment Information": [
-        #     "job_admin.", "job_blue_collar", "job_entrepreneur",
-        #     "job_housemaid", "job_management", "job_retired",
-        #     "job_self_employed", "job_services", "job_student",
-        #     "job_technician", "job_unemployed", "job_unknown"
-        # ],
+        "Personal Information": ["age", "education", "balance", "contact_telephone"],
+        "Loans": ["housing", "loan", "default"],
+        "Campaign Metrics": ["day", "month", "duration", "campaign", "pdays", "previous", "poutcome", "days_in_year"]
+    }
+    DESCS = {
+        k: v for k, v in {
+            "Personal Information": "Core numeric features (age, education, balance, contact)",
+            "Loans": "Housing/personal loans",
+            "Campaign Metrics": "Campaign contact timing & outcomes"
+        }.items()
+    }
+    EXS = {
+        k: v for k, v in {
+            "Personal Information": "e.g. age=42, balance=10000.0",
+            "Loans": "e.g. housing=1, loan=0",
+            "Campaign Metrics": "e.g. duration=900, previous=2"
+        }.items()
     }
 
-    FEATURE_DESCRIPTIONS = {
-        "Personal Information":    "Core numeric features (age, education level, default flag, balance, contact means)",
-        "Loans":                   "Whether the client has housing and/or personal loans",
-        "Campaign Metrics":        "Details of past campaign contacts (timing, counts, outcomes)",
-        # "Contact Information":     "Which channel was used to contact the client (cellular vs telephone)"
-        # "Marital Status":          "One-hot flags for marital status categories",
-        # "Employment Information":  "One-hot flags for each job category"
-    }
+    chosen = st.multiselect("Select feature groups:", list(FEATURE_GROUPS.keys()))
+    if not chosen:
+        st.warning("Select at least one group to proceed.")
+        return
 
-    FEATURE_EXAMPLES = {
-        "Personal Information":    "e.g. age, education level, personal balance etc.",
-        "Loans":                   "e.g. any personal or housing loans",
-        "Campaign Metrics":        "e.g. duration, previous contact, previous success etc.",
-        # "Contact Information":     "e.g. contact through cellphone or homephone"
-        # "Marital Status":          "e.g. married, single, or divorced",
-        # "Employment Information":  "e.g. different areas of jobs"
-    }
+    # show table of selections
+    sel_rows = [{"Group": g, "Desc": DESCS[g], "Example": EXS[g]} for g in chosen]
+    # st.table(pd.DataFrame(sel_rows))
+    df = pd.DataFrame(sel_rows)
+    df.index = df.index + 1
+    st.table(df)
 
-    # 2) Let the user pick feature groups
-    group_names = list(FEATURE_GROUPS.keys())
-    chosen_groups = st.multiselect("Select at least one feature group below for customer segmentation:", group_names)
 
-    if not chosen_groups:
-        st.warning("Please select at least one feature group.")
-    else:
-        # 3) Build a display table of Group → Description → Examples
-        rows = []
-        for g in chosen_groups:
-            rows.append({
-                "Feature Group": g,
-                "Description":   FEATURE_DESCRIPTIONS.get(g, ""),
-                "Examples":      FEATURE_EXAMPLES.get(g, "")
+    cols = []
+    for g in chosen:
+        cols += FEATURE_GROUPS[g]
+    cols = list(dict.fromkeys(cols))
+    st.write(f"{len(cols)} features selected.")
+    if len(cols) < 2:
+        st.error("Pick at least two features.")
+        return
+
+    # invalidate on change
+    if st.session_state.get("last_cols") != cols:
+        for k in ("labels", "Xs", "rf_multi", "scaler"): st.session_state.pop(k, None)
+        st.session_state["last_cols"] = cols
+
+    # cluster when clicked
+    if st.button("Run HDBSCAN Clustering Algorithm to Categorize Clients"):
+        with st.spinner("Clustering…"):
+            scaler, Xs = get_scaled(data, cols)
+            labels = get_labels(Xs)
+            # rf_dict = get_surrogate(labels, Xs)
+            # st.session_state.update({"labels": labels, "rf_dict": rf_dict, "scaler": scaler})
+            rf_multi = get_multi_surrogate(Xs, labels, 500)   # new multi-class model
+            st.session_state.update({
+                "labels":    labels,
+                # "rf_dict":   rf_dict,
+                "Xs":       Xs,
+                "rf_multi":  rf_multi,
+                "scaler":    scaler,
             })
-        display_df = pd.DataFrame(rows)
-        display_df.index = np.arange(1, len(display_df)+1)
 
-        # 4) display selected feature group(s)
-        st.subheader("The Features Groups Selected:")
-        st.table(display_df)
+    if "labels" not in st.session_state:
+        return  # nothing to show yet
 
-        selected_cols = []
-        for g in chosen_groups:
-            selected_cols.extend(FEATURE_GROUPS[g])
-        selected_cols = list(dict.fromkeys(selected_cols))
-        st.write(f"{len(selected_cols)} columns are selected.")
+    # display results
+    if "labels" in st.session_state:
+        # labels = st.session_state.labels
+        # data2 = data.assign(Cluster=labels)
+        # # cluster means
+        # means = data2.groupby("Cluster")[cols].mean()
+        # st.subheader("Cluster Means")
+        # st.dataframe(means)
+        # # delta
+        # delta = means.subtract(data[cols].mean())
+        # st.subheader("Δ from Overall Mean")
+        # st.dataframe(delta)
 
-        # ─────────────────────────────────────────────────
-        # Invalidate old clustering if the feature set has changed
-        # ─────────────────────────────────────────────────
-        if st.session_state.get("last_selected_cols") != selected_cols:
-            for key in ("clustering_done", "cluster_labels", "rf_model", "scaler"):
-                st.session_state.pop(key, None)
-            st.session_state["last_selected_cols"] = selected_cols
+        # # feature importances
+        # rf_dict = st.session_state.rf_dict
+        # tabs = st.tabs([f"Outliers" if c==-1 else f"Group {c+1}" for c in rf_dict.keys()])
+        # for tab, cl in zip(tabs, rf_dict.keys()):
+        #     with tab:
+        #         rf = rf_dict[cl]
+        #         imps = pd.Series(rf.feature_importances_, index=cols).nlargest(5)
+        #         fig, ax = plt.subplots()
+        #         imps.plot.bar(ax=ax)
+        #         st.pyplot(fig)
+        # reconstruct clustered DataFrame
 
-        # 5) Require at least two features
-        if len(selected_cols) < 2:
-            st.error("Pick at least two features to cluster.")
-            # return
+        scaler   = st.session_state.scaler
+        labels   = st.session_state.labels
+        rf_multi = st.session_state.rf_multi
+
+        clustered = data.assign(Cluster=labels)
+
+
+        unique = np.unique(labels)
+
+        # compute count excluding outliers
+        has_outliers = -1 in unique
+        num_clusters = len(unique) - (1 if has_outliers else 0)
+
+        # build your message
+        if has_outliers:
+            msg = f"There are {num_clusters} customer groups (plus an outliers group)."
         else:
-            # 6) Scale & cluster
-            # only once per session, initialize our flags/holders
-            if 'clustering_done' not in st.session_state:
-                st.session_state['clustering_done']   = False
-                st.session_state['cluster_labels']    = None
-                st.session_state['rf_model']          = None
-                st.session_state['scaler']            = None
+            msg = f"There are {num_clusters} customer groups."
+        st.header(msg)
 
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(data[selected_cols])
 
-            # 7) When the user clicks Run Clustering, do the work *once*
-            if st.button("Run HDBSCAN Clustering Algorithm for Customer Segmentation"):
-                # a) cluster
-                clusterer = hdbscan.HDBSCAN(
-                    min_cluster_size=int(round(X_scaled.shape[0]/100)),
-                    min_samples=None,
-                    cluster_selection_method='eom'
-                )
-                labels = clusterer.fit_predict(X_scaled)
-                # b) train surrogate
-                rf = RandomForestClassifier(n_estimators=100, random_state=42)
-                rf.fit(X_scaled, labels)
-                # c) stash everything in session_state
-                st.session_state["clustering_done"]   = True
-                st.session_state["cluster_labels"]    = labels
-                st.session_state["rf_model"]          = rf
-                st.session_state["scaler"]            = scaler
+        clustered = data.assign(Cluster=st.session_state["labels"])
+        selected_cols=cols
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 1) show feature descriptions & examples
+        # st.markdown("---")
+        # show_example_table(clustered, selected_cols)
+        
+        # 2) violin plots
+        st.markdown("---")
+        top_features = plot_violin_top_features_raw(clustered, selected_cols, top_n=3)
+        
+        # 3) 3D scatter
+        plot_3d_clusters_raw(clustered, selected_cols, top_features)
+        
+        # 4) cluster means table
+        st.markdown("---")
+        show_cluster_feature_means_raw(clustered, selected_cols)
+        
+        # 5) tree-based importance
+        st.markdown("---")
+        # note: if you trained one RF per cluster in rf_dict, pick rf_dict[cl] in the plotting fn
+        plot_tree_feature_importance(
+            clustered,
+            st.session_state["scaler"].transform(clustered[selected_cols]),
+            selected_cols
+        )
+        
+        # 6) LIME explainer in an expander
+        st.markdown("---")
+        with st.expander("Try enter a new customer to see which group does he/she belong!"):
+            st.markdown("---")
+            show_example_table(clustered, selected_cols)
 
-            # 8) If users cicked ever clicked Run Clustering bitton, show the explainers *always*
-            if st.session_state['clustering_done']:
-                # restore
-                data["Cluster"] = st.session_state["cluster_labels"]
-                rf_model        = st.session_state["rf_model"]
-                scaler          = st.session_state["scaler"]
-                X_scaled        = scaler.transform(data[selected_cols])
+            show_lime_explanation_custom(
+                st.session_state["rf_multi"],
+                st.session_state["scaler"],
+                clustered,
+                cols,
+                top_n=5
+            )
+                
 
-                st.markdown("---")
-                show_example_table(data,selected_cols)
-                st.markdown("---")
-                # get the top features
-                top_features=plot_violin_top_features_raw(data, selected_cols, top_n=3)
-                # show 3d
-                plot_3d_clusters_raw(data, selected_cols, top_features)
-                st.markdown("---")
-                # 1. Show table of feature means
-                show_cluster_feature_means_raw(data, selected_cols)
-                st.markdown("---")
-                 # 3. Use RF's feature importance to find important factor of clustering
-                plot_tree_feature_importance( data, X_scaled, selected_cols )
-                # 4. SHAP & LIME Explanations
-                st.markdown("---")
+            # show_lime_explanation_custom(
+            #     # if you kept my rf_dict, you’ll need to pluck the right cluster’s RF:
+            #     # st.session_state["rf_dict"][1],
+            #     st.session_state["rf_multi"],
+            #     st.session_state["scaler"],
+            #     clustered,
+            #     selected_cols,
+            #     top_n=5
+            # )
 
-                with st.expander("Try enter a new customer and see which customer group he/she belongs"):
-                    # st.header("Try enter a new customer and see where he/she goes using explainable AI (XAI)")
-                    # show_shap_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
-                    show_lime_explanation_custom(rf_model, scaler, data, selected_cols, top_n=5 )
+    # 8) Once done, show results
+    # if st.session_state.get("clustering_done"):
+    #     clustered = data.assign(Cluster=st.session_state["cluster_labels"])
+    #     st.markdown("---")
+    #     show_example_table(clustered, selected_cols)
+    #     st.markdown("---")
+    #     top_features = plot_violin_top_features_raw(clustered, selected_cols, top_n=3)
+    #     plot_3d_clusters_raw(clustered, selected_cols, top_features)
+    #     st.markdown("---")
+    #     show_cluster_feature_means_raw(clustered, selected_cols)
+    #     st.markdown("---")
+    #     plot_tree_feature_importance(clustered, scaler.transform(clustered[selected_cols]), selected_cols)
+    #     st.markdown("---")
+    #     with st.expander("Try enter a new customer and see which customer group he/she belongs"):
+    #         show_lime_explanation_custom(
+    #             st.session_state["rf_model"],
+    #             st.session_state["scaler"],
+    #             clustered,
+    #             selected_cols,
+    #             top_n=5
+    #         )
 
 # Showing the data overview & export page
 def overview_page(data, preprocessed):
@@ -2345,7 +2384,7 @@ def main():
     # display sidebar
     with st.sidebar:
         # title
-        st.title("Deposit Subscription Prediction Data Science Project")
+        st.title("Fintech App")
         st.caption("v1.1.0 • Data updated: 2025-06-28") 
 
         st.markdown("---")
@@ -2397,7 +2436,8 @@ def main():
     if st.session_state.page != "Home":
         if st.button("← Back to Home"):
             st.session_state.page = "Home"
-            st.experimental_rerun()
+            # st.experimental_rerun()
+            st.rerun()
 
     # page navigation based on user's selection
     if page == "Home":
