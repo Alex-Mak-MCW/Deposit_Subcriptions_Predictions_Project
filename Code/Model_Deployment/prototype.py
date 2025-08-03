@@ -844,6 +844,23 @@ def show_shap_explanation_custom(
     # render that
     st.pyplot(fig)
 
+@st.cache_data(show_spinner=False)
+def get_lime_explainer(
+    sample: np.ndarray,
+    feature_names: list,
+    class_names: list
+) -> LimeTabularExplainer:
+    """
+    Build and return a LimeTabularExplainer on a small sample.
+    This will be cached so we only do the expensive setup once per (sample,features,classes).
+    """
+    return LimeTabularExplainer(
+        training_data=sample,
+        feature_names=feature_names,
+        class_names=class_names,
+        discretize_continuous=True
+    )
+
 
 # Function that plots LIME Explanation for Custom Point (via Top-Feature Sliders)
 def show_lime_explanation_custom(
@@ -877,41 +894,44 @@ def show_lime_explanation_custom(
     if not submit:
         return
 
+    # 3) Build the raw point & scale it
     raw_point = np.array([ raw_vals.get(f, global_means[f]) 
                            for f in selected_cols ]).reshape(1, -1)
     scaled_pt = scaler.transform(raw_point)
 
-    # 4) Predict & display header
+    # # 4) Predict & pull out class names
     pred_label = int(rf_model.predict(scaled_pt)[0])
     sk_classes = list(rf_model.classes_)
     pred_index = sk_classes.index(pred_label)
-    label_map = {cid: ("Outliers" if cid==-1 else f"Group {cid+1}") 
-                 for cid in sk_classes}
-    class_names = [label_map[c] for c in sk_classes]
+    label_map  = {cid: ("Outliers" if cid==-1 else f"Group {cid+1}") for cid in sk_classes}
+    class_names = [label_map[cid] for cid in sk_classes]
 
-    st.write(f"**Predicted Group:** {label_map[pred_label]}  "
+    st.write(f"**Predicted Group:** {label_map[pred_label]} "
              f"(p={rf_model.predict_proba(scaled_pt)[0][pred_index]:.2f})")
     st.markdown("---")
 
-    st.markdown("### Explained by Explainable AI (XAI)")
-
-    # 5) Build the LIME explainer on a small sample
+    # # 5) Prepare a small sample for LIME (cap at 200 rows)
     sample = data[selected_cols].values
-    if len(sample) > 300:
-        sample = sample[np.linspace(0, len(sample)-1, 300, dtype=int)]
+    if len(sample) > 50:
+        idx = np.linspace(0, len(sample)-1, 50, dtype=int)
+        sample = sample[idx]
 
-    explainer = LimeTabularExplainer(
+    # 6) Get the cached explainer and run it *inside* a spinner
+    # explainer = get_lime_explainer(sample, selected_cols, class_names)
+    with st.spinner("Fitting XAI local model…"):
+        explainer = LimeTabularExplainer(
         training_data      = sample,
         feature_names      = selected_cols,
         class_names        = class_names,
-        discretize_continuous=True
-    )
-    exp = explainer.explain_instance(
-        raw_point[0],
-        lambda x: rf_model.predict_proba(scaler.transform(x)),
-        labels=(pred_index,),    # only the predicted class
-        num_features=top_n
-    )
+        discretize_continuous=False
+        )
+        exp = explainer.explain_instance(
+            raw_point[0],
+            lambda x: rf_model.predict_proba(scaler.transform(x)),
+            labels=(pred_index,),
+            num_features=top_n,
+            num_samples=50 
+        )
 
     # 9) Render LIME’s HTML
     html = exp.as_html()
