@@ -23,7 +23,7 @@ GitPython==3.1.45
 hdbscan==0.8.40
 idna==3.10
 imageio==2.37.0
-imbalanced-learn==0.13.0
+imbalanced-learn==0.10.1
 ipykernel==6.30.0
 ipython==8.37.0
 jedi==0.19.2
