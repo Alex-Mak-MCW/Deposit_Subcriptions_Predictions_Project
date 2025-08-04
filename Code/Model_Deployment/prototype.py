@@ -1546,13 +1546,13 @@ def display_prediction(prediction):
     # Predict success case:
     if prediction[0] == 1:
         with col1:
-            st.image("Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
+            st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
         with col2:
             st.write("### The Marketing Campaign will Succeed!")
     # Predict failure case:
     elif prediction[0] == 0:
         with col1:
-            st.image("Visualizations/Result_Icons/failure_icon.png", width=50)  # Use an icon for failure
+            st.image("Code/Model_Deployment/Visualizations/Result_Icons/failure_icon.png", width=50)  # Use an icon for failure
         with col2:
             st.write("### The Marketing Campaign will Fail.")
 
@@ -2369,7 +2369,7 @@ def acknowledgement_page(data):
     """
     st.markdown(ack_html, unsafe_allow_html=True)
 
-    st.image("Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
+    st.image("Code/Model_Deployment/Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
 
 # --- MAIN APP ---
 #-----------------------------------------------
