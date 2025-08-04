@@ -903,53 +903,53 @@ def show_lime_explanation_custom(
     pred_label = int(rf_model.predict(scaled_pt)[0])
     sk_classes = list(rf_model.classes_)
     pred_index = sk_classes.index(pred_label)
-    label_map  = {cid: ("Outliers" if cid==-1 else f"Group {cid+1}") for cid in sk_classes}
+    label_map  = {cid: ("Outliers" if cid==-1 else f"Customer Group {cid+1}") for cid in sk_classes}
     class_names = [label_map[cid] for cid in sk_classes]
 
-    st.write(f"**Predicted Group:** {label_map[pred_label]} "
+    st.header(f"Predicted Outcome: {label_map[pred_label]} "
              f"(p={rf_model.predict_proba(scaled_pt)[0][pred_index]:.2f})")
     st.markdown("---")
 
-    # # 5) Prepare a small sample for LIME (cap at 200 rows)
-    sample = data[selected_cols].values
-    if len(sample) > 50:
-        idx = np.linspace(0, len(sample)-1, 50, dtype=int)
-        sample = sample[idx]
+    # # # 5) Prepare a small sample for LIME (cap at 200 rows)
+    # sample = data[selected_cols].values
+    # if len(sample) > 50:
+    #     idx = np.linspace(0, len(sample)-1, 50, dtype=int)
+    #     sample = sample[idx]
 
-    # 6) Get the cached explainer and run it *inside* a spinner
-    # explainer = get_lime_explainer(sample, selected_cols, class_names)
-    with st.spinner("Fitting XAI local model…"):
-        explainer = LimeTabularExplainer(
-        training_data      = sample,
-        feature_names      = selected_cols,
-        class_names        = class_names,
-        discretize_continuous=False
-        )
-        exp = explainer.explain_instance(
-            raw_point[0],
-            lambda x: rf_model.predict_proba(scaler.transform(x)),
-            labels=(pred_index,),
-            num_features=top_n,
-            num_samples=50 
-        )
+    # # 6) Get the cached explainer and run it *inside* a spinner
+    # # explainer = get_lime_explainer(sample, selected_cols, class_names)
+    # with st.spinner("Fitting XAI local model…"):
+    #     explainer = LimeTabularExplainer(
+    #     training_data      = sample,
+    #     feature_names      = selected_cols,
+    #     class_names        = class_names,
+    #     discretize_continuous=False
+    #     )
+    #     exp = explainer.explain_instance(
+    #         raw_point[0],
+    #         lambda x: rf_model.predict_proba(scaler.transform(x)),
+    #         labels=(pred_index,),
+    #         num_features=top_n,
+    #         num_samples=50 
+    #     )
 
-    # 9) Render LIME’s HTML
-    html = exp.as_html()
-    wrapper = f"""
-    <div style="
-        background-color: white;
-        padding: 16px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: 200px;          /* ↑ doubled the gap */
-    ">
-    {html}
-    </div>
-    """
-    components.html(wrapper, height=500, scrolling=True)
+    # # 9) Render LIME’s HTML
+    # html = exp.as_html()
+    # wrapper = f"""
+    # <div style="
+    #     background-color: white;
+    #     padding: 16px;
+    #     border-radius: 8px;
+    #     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    #     display: flex;
+    #     flex-wrap: wrap;
+    #     justify-content: space-between;
+    #     gap: 200px;          /* ↑ doubled the gap */
+    # ">
+    # {html}
+    # </div>
+    # """
+    # components.html(wrapper, height=500, scrolling=True)
 
 # Function that plots 3D Scatter on Raw
 def plot_3d_clusters_raw(data, selected_cols, top_features):
@@ -1073,7 +1073,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     </div>
     """.format(inner=lime_html)
 
-    components.html(wrapper, height=500)
+    components.html(wrapper, height=300)
     # components.html(lime_exp.as_html(), height=350)
 
     # ─── SHAP force plot for P(Yes) ───
@@ -1084,6 +1084,22 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     fig = shap.plots.force(single_exp, matplotlib=True, show=False)
     st.pyplot(fig, bbox_inches="tight")
 
+# export-related functions
+#-----------------------------------------------
+#-----------------------------------------------
+
+@st.cache_data
+def get_csv_bytes(df: pd.DataFrame) -> bytes:
+    return df.to_csv(index=False).encode("utf-8")
+
+@st.cache_data
+def get_excel_buffer(df: pd.DataFrame) -> io.BytesIO:
+    buf = io.BytesIO()
+    df.to_excel(buf, index=False, sheet_name="sheet", engine="openpyxl")
+    buf.seek(0)
+    return buf
+
+
 
 
 # MAIN CODE
@@ -1092,7 +1108,8 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
 #-----------------------------------------------
 st.set_page_config(
     page_title="Bank Term Deposit App", 
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # customer css styling
@@ -1546,13 +1563,15 @@ def display_prediction(prediction):
     # Predict success case:
     if prediction[0] == 1:
         with col1:
-            st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
+            st.image("Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
+            # st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
         with col2:
             st.write("### The Marketing Campaign will Succeed!")
     # Predict failure case:
     elif prediction[0] == 0:
         with col1:
-            st.image("Code/Model_Deployment/Visualizations/Result_Icons/failure_icon.png", width=50)  # Use an icon for failure
+            st.image("Visualizations/Result_Icons/failure_icon.png", width=50)  # Use an icon for failure
+            # st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
         with col2:
             st.write("### The Marketing Campaign will Fail.")
 
@@ -1582,31 +1601,57 @@ def home_page(models, data, raw_data):
     st.markdown("<br>", unsafe_allow_html=True)
 
     # now each card is (Title, Description, page_key, ImagePath)
-    # "Visualizations/Homepage_Icons/predictive-icon.jpg"
+    # "Code/Model_Deployment/"
+    # cards = [
+    #     (
+    #         "Subscription Prediction",
+    #         "Use our ML model to predict will a client subscribe the term deposit subscription!",
+    #         "Deposit Subscription Prediction",
+    #         "Code/Model_Deployment/Visualizations/Homepage_Icons/predictive-icon.jpg"
+    #     ),
+    #     (
+    #         "Interactive Dashboard",
+    #         "Find out underlying trends and insights via exploratory data analysis (EDA)!",
+    #         "Interactive Dashboard",
+    #         "Code/Model_Deployment/Visualizations/Homepage_Icons/dashboard-icon.jpg"
+    #     ),
+    #     (
+    #         "Customer Segmentation",
+    #         "Try to intelligently assign customer into groups with our clustering algorithm!",
+    #         "Customer Segmentation",
+    #         "Code/Model_Deployment/Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
+    #     ),
+    #     (
+    #         "Data Overview & Export",
+    #         "Download & use our original data/ cleaned data after conudcting data preprcessing!",
+    #         "Data Overview & Export",
+    #         "Code/Model_Deployment/Visualizations/Homepage_Icons/export-data-icon.jpg"
+    #     ),
+    # ]
     cards = [
         (
             "Subscription Prediction",
             "Use our ML model to predict will a client subscribe the term deposit subscription!",
             "Deposit Subscription Prediction",
-            "Code/Model_Deployment/Visualizations/Homepage_Icons/predictive-icon.jpg"
+            "Visualizations/Homepage_Icons/predictive-icon.jpg"
         ),
         (
             "Interactive Dashboard",
             "Find out underlying trends and insights via exploratory data analysis (EDA)!",
             "Interactive Dashboard",
-            "Code/Model_Deployment/Visualizations/Homepage_Icons/dashboard-icon.jpg"
+            "Visualizations/Homepage_Icons/dashboard-icon.jpg"
         ),
         (
             "Customer Segmentation",
             "Try to intelligently assign customer into groups with our clustering algorithm!",
             "Customer Segmentation",
-            "Code/Model_Deployment/Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
+            "Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
         ),
         (
             "Data Overview & Export",
             "Download & use our original data/ cleaned data after conudcting data preprcessing!",
             "Data Overview & Export",
-            "Code/Model_Deployment/Visualizations/Homepage_Icons/export-data-icon.jpg"
+            "Visualizations/Homepage_Icons/export-data-icon.jpg"
         ),
     ]
 
@@ -1700,7 +1745,7 @@ def prediction_page(models, data):
                 # Load XAI explaianers to prepare for explaining prediction output
                 shap_exp, lime_exp = load_explainers(model, data, feature_names)
 
-                print("XAI:", inputs)
+                # print("XAI:", inputs)
                 st.markdown("---")
 
                 # st.markdown("""<br></br>""")
@@ -2260,41 +2305,48 @@ def overview_page(data, preprocessed):
     # Raw data box
     # ─── Raw Data ──────────────────────────────────────────────
     with col1:
+        # st.subheader("Raw Data")
+
+        # # 1) Brief description
+        # st.markdown(
+        #     f"""
+        #     - **Rows:** {data.shape[0]:,}  
+        #     - **Columns:** {data.shape[1]:,}  
+        #     """
+        # )
+        # st.markdown(
+        #     """
+        #     **Contents:**  
+        #     1. Client's personal and financial information 
+        #     2. Client's Contact & campaign history 
+        #     3. The final subscription outcome 
+        #     """
+        # )
+
+        # # 2) Download buttons
+        # csv = data.to_csv(index=False).encode("utf-8")
+        # st.download_button(
+        #     "📥 Download Raw Data (.csv)",
+        #     data=csv,
+        #     file_name="raw_data.csv",
+        #     mime="text/csv",
+        # )
+        # buf = io.BytesIO()
+        # data.to_excel(buf, index=False, sheet_name="raw", engine="openpyxl")
+        # buf.seek(0)
+        # st.download_button(
+        #     "📥 Download Raw Data (.xlsx)",
+        #     data=buf,
+        #     file_name="raw_data.xlsx",
+        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        # )
         st.subheader("Raw Data")
-
-        # 1) Brief description
-        st.markdown(
-            f"""
-            - **Rows:** {data.shape[0]:,}  
-            - **Columns:** {data.shape[1]:,}  
-            """
-        )
-        st.markdown(
-            """
-            **Contents:**  
-            1. Client's personal and financial information 
-            2. Client's Contact & campaign history 
-            3. The final subscription outcome 
-            """
-        )
-
-        # 2) Download buttons
-        csv = data.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "📥 Download Raw Data (.csv)",
-            data=csv,
-            file_name="raw_data.csv",
-            mime="text/csv",
-        )
-        buf = io.BytesIO()
-        data.to_excel(buf, index=False, sheet_name="raw", engine="openpyxl")
-        buf.seek(0)
-        st.download_button(
-            "📥 Download Raw Data (.xlsx)",
-            data=buf,
-            file_name="raw_data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+        st.markdown(f"- **Rows:** {data.shape[0]:,}  \n- **Cols:** {data.shape[1]:,}")
+        csv_bytes = get_csv_bytes(data)
+        st.download_button("Download CSV", csv_bytes, "raw_data.csv", "text/csv")
+        xlsx_buf   = get_excel_buffer(data)
+        st.download_button("Download XLSX", xlsx_buf, "raw_data.xlsx",
+                           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
     # ─── Divider ───────────────────────────────────────────────
     with col_div:
@@ -2313,41 +2365,48 @@ def overview_page(data, preprocessed):
     # Preprocessed data box
     # ─── Preprocessed Data ─────────────────────────────────────
     with col2:
-        st.subheader("Preprocessed Data")
+        # st.subheader("Preprocessed Data")
 
-        # 1) Brief description
-        st.markdown(
-            f"""
-            - **Rows:** {preprocessed.shape[0]:,} (-11)  
-            - **Columns:** {preprocessed.shape[1]:,} (+15) 
-            """
-        )
-        st.markdown(
-            """
-            **This version has been cleaned & feature‐engineered for further data & AI usages, including:**  
-            1. **Data Cleaning:** to remove missing & duplicate entries, include anomaly detection & removal.
-            2. **Data Transformation:** Encoding categorical features & scaling numerics.  
-            3. **Create/ modify features** from existing data.  
-            """
-        )
+        # # 1) Brief description
+        # st.markdown(
+        #     f"""
+        #     - **Rows:** {preprocessed.shape[0]:,} (-11)  
+        #     - **Columns:** {preprocessed.shape[1]:,} (+15) 
+        #     """
+        # )
+        # st.markdown(
+        #     """
+        #     **This version has been cleaned & feature‐engineered for further data & AI usages, including:**  
+        #     1. **Data Cleaning:** to remove missing & duplicate entries, include anomaly detection & removal.
+        #     2. **Data Transformation:** Encoding categorical features & scaling numerics.  
+        #     3. **Create/ modify features** from existing data.  
+        #     """
+        # )
 
-        # 2) Download buttons
-        csv2 = preprocessed.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            "📥 Download Processed Data (.csv)",
-            data=csv2,
-            file_name="preprocessed_data.csv",
-            mime="text/csv",
-        )
-        buf2 = io.BytesIO()
-        preprocessed.to_excel(buf2, index=False, sheet_name="processed", engine="openpyxl")
-        buf2.seek(0)
-        st.download_button(
-            "📥 Download Processed Data (.xlsx)",
-            data=buf2,
-            file_name="preprocessed_data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+        # # 2) Download buttons
+        # csv2 = preprocessed.to_csv(index=False).encode("utf-8")
+        # st.download_button(
+        #     "📥 Download Processed Data (.csv)",
+        #     data=csv2,
+        #     file_name="preprocessed_data.csv",
+        #     mime="text/csv",
+        # )
+        # buf2 = io.BytesIO()
+        # preprocessed.to_excel(buf2, index=False, sheet_name="processed", engine="openpyxl")
+        # buf2.seek(0)
+        # st.download_button(
+        #     "📥 Download Processed Data (.xlsx)",
+        #     data=buf2,
+        #     file_name="preprocessed_data.xlsx",
+        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        # )
+        st.subheader("Processed Data")
+        st.markdown(f"- **Rows:** {preprocessed.shape[0]:,}  \n- **Cols:** {preprocessed.shape[1]:,}")
+        csv2 = get_csv_bytes(preprocessed)
+        xlsx2 = get_excel_buffer(preprocessed)
+        st.download_button("Download CSV", csv2, "Preprocessed_Data.csv", "text/csv")
+        st.download_button("Download XLSX", xlsx2, "Preprocessed_Data.xlsx",
+                           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     
 # Displays the final acknowledgement page
 def acknowledgement_page(data):
@@ -2369,7 +2428,8 @@ def acknowledgement_page(data):
     """
     st.markdown(ack_html, unsafe_allow_html=True)
 
-    st.image("Code/Model_Deployment/Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
+    st.image("Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
+    # st.image("Code/Model_Deployment/Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
 
 # --- MAIN APP ---
 #-----------------------------------------------
