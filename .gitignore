@@ -1,0 +1,16 @@
+# Virtual environments
+venv/
+**/venv/
+
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# VS Code settings
+.vscode/
+
+# macOS cruft
+.DS_Store
