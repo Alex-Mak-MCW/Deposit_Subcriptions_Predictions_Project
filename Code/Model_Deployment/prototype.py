@@ -1582,30 +1582,31 @@ def home_page(models, data, raw_data):
     st.markdown("<br>", unsafe_allow_html=True)
 
     # now each card is (Title, Description, page_key, ImagePath)
+    # "Visualizations/Homepage_Icons/predictive-icon.jpg"
     cards = [
         (
             "Subscription Prediction",
             "Use our ML model to predict will a client subscribe the term deposit subscription!",
             "Deposit Subscription Prediction",
-            "Visualizations/Homepage_Icons/predictive-icon.jpg"
+            "predictive-icon.jpg"
         ),
         (
             "Interactive Dashboard",
             "Find out underlying trends and insights via exploratory data analysis (EDA)!",
             "Interactive Dashboard",
-            "Visualizations/Homepage_Icons/dashboard-icon.jpg"
+            "dashboard-icon.jpg"
         ),
         (
             "Customer Segmentation",
             "Try to intelligently assign customer into groups with our clustering algorithm!",
             "Customer Segmentation",
-            "Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
+            "cluster-analysis-icon.jpg"
         ),
         (
             "Data Overview & Export",
             "Download & use our original data/ cleaned data after conudcting data preprcessing!",
             "Data Overview & Export",
-            "Visualizations/Homepage_Icons/export-data-icon.jpg"
+            "export-data-icon.jpg"
         ),
     ]
 
