@@ -229,38 +229,67 @@ def contact_channel_pie(df, filter_col="y", filter_val=1):
     return fig
 
 # plot venn diagram for success cases over loan types
-def plot_loan_venn(df, filter_col="y", filter_val=1, container_class="venn-container"):
-    
-    # isolate success cases
-    wins=df[df['y']==1]
-    
-    # FOR loans
-    # ── 1) Compute each subset ──
-    wins["both loans"] = ((wins["housing"] == 1) & (wins["loan"] == 1)).astype(int)
-    wins["no loans"]   = ((wins["housing"] == 0) & (wins["loan"] == 0)).astype(int)
+def plot_loan_venn(df, filter_col="y", filter_val=1):
+    # 1) Compute counts
+    wins = df[df['y']==1]
+    both     = int(((wins["housing"] == 1) & (wins["loan"] == 1)).sum())
+    housing  = int(wins["housing"].sum()) - both
+    personal = int(wins["loan"].sum())    - both
+    no_loans = int(((wins["housing"] == 0) & (wins["loan"] == 0)).sum())
 
-    both       = int(wins["both loans"].sum())
-    housing    = int(wins["housing"].sum()) - both      # housing only
-    personal   = int(wins["loan"].sum())    - both      # personal only
-    no_loans   = int(wins["no loans"].sum())            # neither
+    # 2) Create transparent canvas
+    fig, ax = plt.subplots(facecolor="none")
+    ax.set_facecolor("none")
 
-    # ── 2) Plot Venn ──
-    fig, ax = plt.subplots()
+    # 3) Draw the Venn
     v = venn2(
         subsets=(housing, personal, both),
         set_labels=("Housing Loan", "Personal Loan"),
         ax=ax
     )
-    # color the regions
+
+    # 4) Color the patches
     v.get_patch_by_id('10').set_color('#636EFA')
     v.get_patch_by_id('01').set_color('#EF553B')
     v.get_patch_by_id('11').set_color('#00CC96')
-    # annotate “no loans” below
-    ax.text(0.5, 0.5, f"No Loans: {no_loans}",
-            ha="center", va="center", fontsize=12)
-    ax.set_title("Wins per Loan Ownership")
+
+    # 5) Force **all** text to white
+    #    • Set labels ("Housing Loan", "Personal Loan")
+    # 1) Make all the venn text full‐bright white + bold
+    for txt in v.set_labels:
+        txt.set_color("white")
+        txt.set_fontweight("bold")
+        txt.set_alpha(1)
+        txt.set_fontsize(8)   # or whatever suits your layout
+
+    for txt in v.subset_labels:
+        if txt is not None:
+            txt.set_color("white")
+            txt.set_fontweight("bold")
+            txt.set_alpha(1)
+            txt.set_fontsize(8)
+
+    # 2) Same for your annotation & title
+    ax.text(
+        0.5, 0.5, f"No Loans: {no_loans}",
+        ha="center", va="center",
+        fontsize=8, color="white",
+        fontweight="bold", alpha=1
+    )
+    ax.set_title(
+        "Wins per Loan Ownership",
+        color="white",
+        fontweight="bold",
+        fontsize=8,
+        alpha=1
+    )
+
+    # 8) Remove spines for a cleaner look
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
     return fig
+
 
 
 # Function that displays KDE plot
@@ -703,59 +732,68 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
 
 # Function that plots Tree-Based Importance to show importance of each factor
 def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
-    st.header("Important Factors That Helps Building the Customer Groups")
+    st.header("Important Factors That Help Build the Customer Groups")
 
     # build tabs for users to traverse
-    cluster_labels = sorted(data["Cluster"].unique())
+    cluster_labels = sorted(set(data["Cluster"]))
+    if -1 in cluster_labels:
+        cluster_labels = [cl for cl in cluster_labels if cl != -1] + [-1]
+
+    # 2) Build the tab‐names in exactly the same order
     tab_labels = [
         ("Outliers" if cl == -1 else f"Customer Group {cl+1}")
         for cl in cluster_labels
     ]
-    tab_labels.append(tab_labels.pop(0))
 
-
-    tabs = st.tabs(tab_labels)
-    
-    # display the plot under each tab
     rf_models = {}
+    tabs = st.tabs(tab_labels)
     for tab, cl in zip(tabs, cluster_labels):
         with tab:
-            # Create binary target: 1 if in this cluster, 0 otherwise
+            # 1) Train surrogate
             y = (data["Cluster"] == cl).astype(int)
-            
-            # Train surrogate
             rf = RandomForestClassifier(n_estimators=100, random_state=42)
             rf.fit(X_scaled, y)
             rf_models[cl] = rf
-            
-            # Get top_n importances
-            imps = pd.Series(rf.feature_importances_, index=selected_cols)
-            imps = imps.nlargest(top_n)
-            
-            # Plot
-            fig, ax = plt.subplots()
-            imps.plot.bar(ax=ax)
-            
-            # ─── annotate each bar ───
-            for bar in ax.patches:
-                height = bar.get_height()
-                ax.text(
-                    bar.get_x() + bar.get_width() / 2,  # x: center of bar
-                    height,                             # y: top of bar
-                    f"{height:.2f}",                    # label text
-                    ha="center", va="bottom",           # align
-                    fontsize=10                         # adjust if you like
-                )
-            
-            # plot setup
-            ax.set_title(f"Top {top_n} Features for {'Outliers' if cl==-1 else f'Customer Group {cl+1}'}")
-            ax.set_xlabel("Features")
-            ax.set_ylabel("Importance Score")
-            ax.set_xticklabels(imps.index, rotation=45, ha="right")
-            plt.tight_layout()
-            st.pyplot(fig)
 
-    
+            # 2) Get top_n importances
+            imps = pd.Series(rf.feature_importances_, index=selected_cols).nlargest(top_n)
+
+            # 3) Create a smaller figure on a light-grey background
+            fig, ax = plt.subplots(
+                figsize=(6, 4),            # smaller width x height
+            )
+            light_bg = "#f5f5f5"
+            fig.patch.set_facecolor(light_bg)
+            ax.set_facecolor(light_bg)
+
+            # 4) Plot bars
+            bars = ax.bar(imps.index, imps.values, color="#5a9bd4", alpha=0.9)
+
+            # 5) Annotate each bar
+            for bar in bars:
+                h = bar.get_height()
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    h,
+                    f"{h:.2f}",
+                    ha="center", va="bottom",
+                    fontsize=10,
+                    color="#333"
+                )
+
+            # 6) Style axes & title with dark text
+            title = ("Outliers" if cl == -1 else f"Customer Group {cl+1}")
+            ax.set_title(f"Top {top_n} Features for {title}", color="#333", fontsize=12)
+            ax.set_xlabel("Features", color="#333", fontsize=10)
+            ax.set_ylabel("Importance Score", color="#333", fontsize=10)
+            ax.tick_params(colors="#333")
+            plt.setp(ax.get_xticklabels(), rotation=45, ha="right", color="#333", fontsize=9)
+
+            plt.tight_layout()
+
+            # 7) Render with fixed width
+            st.pyplot(fig, use_container_width=False)
+
     return rf_models
 
 # Plot SHAP Explanation for Custom Point (via Top-Feature Sliders)
@@ -819,7 +857,7 @@ def show_shap_explanation_custom(
     pred = rf_model.predict(scaled_pt)[0]
     label = "Outliers" if pred == -1 else f"Customer Group{pred}"
     proba = rf_model.predict_proba(scaled_pt)[0][pred]
-    st.write(f"**Predicted Customer Group: ** {label} (p={proba:.2f})")
+    st.write(f"**Predicted Customer Group: ** {label} (probability={proba*100:.2f}%)")
 
     # Build a single‐output explainer for the “pred” class probability:
     explainer = shap.Explainer(
@@ -894,21 +932,22 @@ def show_lime_explanation_custom(
     if not submit:
         return
 
-    # 3) Build the raw point & scale it
-    raw_point = np.array([ raw_vals.get(f, global_means[f]) 
-                           for f in selected_cols ]).reshape(1, -1)
-    scaled_pt = scaler.transform(raw_point)
+    with st.spinner ("Finding the best group for your added customer..."):
+        # 3) Build the raw point & scale it
+        raw_point = np.array([ raw_vals.get(f, global_means[f]) 
+                            for f in selected_cols ]).reshape(1, -1)
+        scaled_pt = scaler.transform(raw_point)
 
-    # # 4) Predict & pull out class names
-    pred_label = int(rf_model.predict(scaled_pt)[0])
-    sk_classes = list(rf_model.classes_)
-    pred_index = sk_classes.index(pred_label)
-    label_map  = {cid: ("Outliers" if cid==-1 else f"Customer Group {cid+1}") for cid in sk_classes}
-    class_names = [label_map[cid] for cid in sk_classes]
+        # # 4) Predict & pull out class names
+        pred_label = int(rf_model.predict(scaled_pt)[0])
+        sk_classes = list(rf_model.classes_)
+        pred_index = sk_classes.index(pred_label)
+        label_map  = {cid: ("Outliers" if cid==-1 else f"Customer Group {cid+1}") for cid in sk_classes}
+        class_names = [label_map[cid] for cid in sk_classes]
 
-    st.header(f"Predicted Outcome: {label_map[pred_label]} "
-             f"(p={rf_model.predict_proba(scaled_pt)[0][pred_index]:.2f})")
-    st.markdown("---")
+        st.subheader(f"Predicted Outcome: {label_map[pred_label]} "
+                f"(probability={rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.2f}%)")
+        st.markdown("---")
 
     # # # 5) Prepare a small sample for LIME (cap at 200 rows)
     # sample = data[selected_cols].values
@@ -1176,17 +1215,17 @@ def load_models():
     # from home
     # with open('../../Model/DT_Resampled_Model_Deploy.pkl', 'rb') as f:
     # for deployment
-    with open('Model/DT_Resampled_Model_Deploy.pkl', 'rb') as f:
+    with open('Model/DT_Resampled_Model_Deploy(OLD).pkl', 'rb') as f:
         dt_pipeline = pickle.load(f)
         dt_model = dt_pipeline.named_steps['classifier']
     # Load Random Forest (or Resampled Model)
     # with open('../../Model/RF_Model_Deploy.pkl', 'rb') as f:
-    with open('Model/RF_Resampled_Model_Deploy.pkl', 'rb') as f:
+    with open('Model/RF_Resampled_Model_Deploy(OLD).pkl', 'rb') as f:
         rf_pipeline = pickle.load(f)
         rf_model = rf_pipeline.named_steps['classifier']
     # Load XGBoost (or Resampled Model)
     # with open('../../Model/XGB_Model_Deploy.pkl', 'rb') as f:
-    with open('Model/XGB_Resampled_Model_Deploy.pkl', 'rb') as f:
+    with open('Model/XGB_Resampled_Model_Deploy(OLD).pkl', 'rb') as f:
         xgb_pipeline = pickle.load(f)
         xgb_model = xgb_pipeline.named_steps['classifier']
     return {
@@ -1214,7 +1253,7 @@ def make_prediction(model, user_input):
 # Takes user input for decisiion tree model
 def user_input_form_decision_tree():
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader('"Tree-based model that makes decisions by splitting data recursively on feature values"')
+    st.subheader('"Tree-based Model that Makes Decisions by Splitting Data Recursively on Feature Values"')
 
     # 1) Build the pros/cons table
     dt_pros_cons_df = pd.DataFrame({
@@ -1238,7 +1277,7 @@ def user_input_form_decision_tree():
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    st.subheader("Fill in The Customer's Values:")
+    st.subheader("Fill in Your Customer's Values:")
 
 
     # Calculate the current day of the year for days_in_year
@@ -1333,7 +1372,7 @@ def user_input_form_random_forest():
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    st.subheader("Fill in The Customer's Values:")
+    st.subheader("Fill in Your Customer's Values:")
 
 
     # Get current date
@@ -1416,7 +1455,7 @@ def user_input_form_random_forest():
 def user_input_form_xgboost():
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader('"A tree that Learns from its 100 Ancestors to Make Rules."')
+    st.subheader('"An Intelligent Tree that Learns from its 100 Ancestors to Make Rules."')
 
     # 1) Build the pros/cons table
     xgb_pros_cons_df = pd.DataFrame({
@@ -1438,7 +1477,7 @@ def user_input_form_xgboost():
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    st.subheader("Fill in The Customer's Values:")
+    st.subheader("Fill in Your Customer's Values:")
 
 
     # Get the current date
@@ -1591,47 +1630,75 @@ def _img_to_base64(path):
 
 # function that builds the homepage layout
 def home_page(models, data, raw_data):
-    # introduction
-    st.header("Welcome to the [Term Deposit Subscription Prediction App]!")
-    st.markdown("---")
-    st.write(
-        "This app uses data science and machine learning methodologies to improve the performance of a term deposit financial product, especially in product analytics, demand forecasting, and customer churning. "
-    )
-    st.write("Come try and pick one of the boxes below to get started!")
-    st.markdown("<br>", unsafe_allow_html=True)
 
-    # now each card is (Title, Description, page_key, ImagePath)
-    # "Code/Model_Deployment/"
-    # cards = [
-    #     (
-    #         "Subscription Prediction",
-    #         "Use our ML model to predict will a client subscribe the term deposit subscription!",
-    #         "Deposit Subscription Prediction",
-    #         "Code/Model_Deployment/Visualizations/Homepage_Icons/predictive-icon.jpg"
-    #     ),
-    #     (
-    #         "Interactive Dashboard",
-    #         "Find out underlying trends and insights via exploratory data analysis (EDA)!",
-    #         "Interactive Dashboard",
-    #         "Code/Model_Deployment/Visualizations/Homepage_Icons/dashboard-icon.jpg"
-    #     ),
-    #     (
-    #         "Customer Segmentation",
-    #         "Try to intelligently assign customer into groups with our clustering algorithm!",
-    #         "Customer Segmentation",
-    #         "Code/Model_Deployment/Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
-    #     ),
-    #     (
-    #         "Data Overview & Export",
-    #         "Download & use our original data/ cleaned data after conudcting data preprcessing!",
-    #         "Data Overview & Export",
-    #         "Code/Model_Deployment/Visualizations/Homepage_Icons/export-data-icon.jpg"
-    #     ),
-    # ]
+    # CSS
+    # 1️⃣ Inject CSS to sync card text with nav‐link
+    st.markdown(
+        """
+        <style>
+        /* Match card titles with sidebar nav‐link font: */
+        .card-title {
+        font-size: 1.125rem !important;  /* e.g. 18px if nav‐link is 18px */
+        margin: 0 0 8px 0;
+        color: #fff !important;
+        }
+        /* Match card desc with sidebar nav‐link font: */
+        .card-desc {
+        font-size: 1rem !important;      /* 16px if nav‐link is 16px */
+        margin: 0 0 12px 0;
+        color: #fff !important;
+        }
+        /* 1) Give the whole card a gray frame instead of white */
+        .card-container {
+            border: 1px solid #777 !important;    /* darker grey */
+            border-radius: 8px;
+            padding:16px 16px 32px 16px !important;  /* top right bottom left */
+            background-color: transparent;
+        }
+
+        /* 1 & 3) Push text in from the left edge, and keep font sizes you already set */
+        .card-content {
+            padding-left: 12px;
+        }
+
+        /* 3) Dim the images slightly */
+        .card-img img {
+            filter: brightness(0.85);             /* 75% brightness */
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # 2️⃣ Use those classes in your header & intro
+    # st.markdown(
+    #     '<h2 class="card-title">Welcome to the FinDS-ML Studio!</h2>',
+    #     unsafe_allow_html=True
+    # )
+    st.header("Welcome to the FinDS-ML Studio!")
+    st.markdown("---")
+
+
+
+    st.markdown('<p class="card-desc">This app uses data science and machine learning methodologies to improve the performance of a bank financial product, especially in the areas of: </p>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <ol class="card-desc" style="margin-left:1.5rem; padding-left:0;">
+        <li>Product Analytics</li>
+        <li>Demand Forecasting</li>
+        <li>Business Intelligence</li>
+        </ol>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<p class="card-desc">Come pick a box below to get started!</p>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     cards = [
         (
             "Subscription Prediction",
-            "Use our ML model to predict will a client subscribe the term deposit subscription!",
+            "Use our ML model to predict will a client subscribe the product!",
             "Deposit Subscription Prediction",
             "Visualizations/Homepage_Icons/predictive-icon.jpg"
         ),
@@ -1643,13 +1710,13 @@ def home_page(models, data, raw_data):
         ),
         (
             "Customer Segmentation",
-            "Try to intelligently assign customer into groups with our clustering algorithm!",
+            "Intelligently assign customers into groups with our clustering algorithm!",
             "Customer Segmentation",
             "Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
         ),
         (
             "Data Overview & Export",
-            "Download & use our original data/ cleaned data after conudcting data preprcessing!",
+            "Download & use our original / cleaned data prepared for you!",
             "Data Overview & Export",
             "Visualizations/Homepage_Icons/export-data-icon.jpg"
         ),
@@ -1659,61 +1726,34 @@ def home_page(models, data, raw_data):
     cols = st.columns(4, gap="large")
     for col, (title, desc, page_key, img_path) in zip(cols, cards):
         with col:
-            # convert the image to base64
             uri = _img_to_base64(img_path)
-
-            # build card HTML, with the <img> inside
             card_html = f"""
-            <div style="
-                border:2px solid #ccc;
-                border-radius:8px;
-                padding:8px 8px 16px 8px;    /* extra 8px bottom padding */
-                height:300px;
-                display:flex;
-                flex-direction:column;
-                justify-content:space-between;
-                background-color: transparent;  /* so your app’s dark bg shows through */
-            ">
-            <div>
-                <h4 style="margin:0 0 8px 0; color:#fff;">{title}</h4>
-                <p  style="font-size:0.9em;
-                        color:#fff;             /* white description */
-                        margin:0 0 12px 0;">
-                {desc}
-                </p>
+            <div class="card-container">
+            <div class="card-content">
+                <h4 class="card-title">{title}</h4>
+                <p class="card-desc">{desc}</p>
             </div>
-            <div style="
-                text-align:center;
-                margin-bottom:24px;            /* more space below the image */
-            ">
-                <img
-                src="{uri}"
-                style="max-width:100%;
-                        max-height:120px;
-                        object-fit:contain;"
-                />
+            <div class="card-img" style="text-align:center; margin-top:16px;">
+                <img src="{uri}"
+                    style="max-width:100%; max-height:120px; object-fit:contain;"/>
             </div>
             </div>
             """
-
             st.markdown(card_html, unsafe_allow_html=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
-            # add a page navigation button
             if col.button("Try it out!", key=f"btn_{page_key}"):
                 st.session_state.page = page_key
-                # st.experimental_rerun()
                 st.rerun()
 
     st.markdown("<br><br>", unsafe_allow_html=True)
-    # st.write("— Alex 🙂")
 
 # Prediction Page
 def prediction_page(models, data):
     # introduction
     st.header("Predicting Term Deposit Subscription")
     st.markdown("---")
-    st.subheader("Choose an AI model to make predictions!")
+    st.subheader("Choose an AI model below to Make the Predictions you Want!")
 
     # 0) build full_feature_list once
     full_feature_list = [c for c in data.columns if c != "y"]
@@ -1737,9 +1777,13 @@ def prediction_page(models, data):
             # print(inputs)
             feature_names = tuple(inputs_dict.keys())
 
+            st.markdown("<br>", unsafe_allow_html=True)
+
             # button that allos prediction
             if st.button(f"Predict with {name}", key=name):
+                st.markdown("---", unsafe_allow_html=True)
                 pred = make_prediction(model, inputs)
+                # st.markdown("<br><br>", unsafe_allow_html=True)
                 display_prediction(pred)
 
                 # Load XAI explaianers to prepare for explaining prediction output
@@ -1766,12 +1810,12 @@ def dashboard_page(data):
         """
         <style>
         .kpi-card {
-          background-color: #ffffff;
+          background-color: rgba(255, 255, 255, 0.5);
           border-radius: 12px;
-          padding: 1rem 0;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          padding: 0.5rem 0;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
           text-align: center;
-          margin-bottom: 1rem;
+          margin-bottom: 0rem;
         }
         /* If you use Plotly inside the card, make its paper transparent */
         .kpi-card .js-plotly-plot .plotly {
@@ -1828,16 +1872,14 @@ def dashboard_page(data):
         .rec-card ul {
         padding-left: 1.2rem;
         }
-
-
         </style>
         """,
         unsafe_allow_html=True
     )
 
     # display introductuin
-    st.header("Interactive Dashboard")
-    st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
+    st.header("Interactive Dashboard - Choose Your Persona & Explore Key Metrics and Visualizations")
+    # st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
     st.markdown("---")
 
     # sub function: visually shows KPIs
@@ -1926,8 +1968,8 @@ def dashboard_page(data):
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-
-    st.markdown("---")
+    # st.markdown("---")
+    st.markdown('<hr>', unsafe_allow_html=True)
 
     # different display outpuet for each persona
     if persona =="Marketing Manager":
@@ -2093,6 +2135,14 @@ def dashboard_page(data):
 # Displays clustering page
 def clustering_page(data): 
     st.header("Customer Segmentation")
+
+    # ─── 0) Setup expander state & callback ────────────────────────────
+    if "cluster_expanded" not in st.session_state:
+        st.session_state.cluster_expanded = False
+
+    def _expand_cluster():
+        st.session_state.cluster_expanded = True
+
     
     # let users to choose the features they want to use for clustering
     st.subheader('Feature Selection')
@@ -2146,19 +2196,21 @@ def clustering_page(data):
         st.session_state["last_cols"] = cols
 
     # cluster when clicked
-    if st.button("Run HDBSCAN Clustering Algorithm to Categorize Clients"):
+    # Note: we attach on_click so that after clicking, cluster_expanded=True
+    run = st.button(
+        "Run HDBSCAN Clustering Algorithm to Categorize Clients",
+        on_click=_expand_cluster
+    )
+    if run:
         with st.spinner("Clustering…"):
             scaler, Xs = get_scaled(data, cols)
             labels = get_labels(Xs)
-            # rf_dict = get_surrogate(labels, Xs)
-            # st.session_state.update({"labels": labels, "rf_dict": rf_dict, "scaler": scaler})
-            rf_multi = get_multi_surrogate(Xs, labels, 500)   # new multi-class model
+            rf_multi = get_multi_surrogate(Xs, labels, 500)
             st.session_state.update({
-                "labels":    labels,
-                # "rf_dict":   rf_dict,
+                "labels":   labels,
                 "Xs":       Xs,
-                "rf_multi":  rf_multi,
-                "scaler":    scaler,
+                "rf_multi": rf_multi,
+                "scaler":   scaler,
             })
 
     if "labels" not in st.session_state:
@@ -2240,7 +2292,7 @@ def clustering_page(data):
         
         # 6) LIME explainer in an expander
         st.markdown("---")
-        with st.expander("Try enter a new customer to see which group does he/she belong!"):
+        with st.expander("Try enter a new customer to see which group does he/she belong!", expanded=st.session_state.cluster_expanded):
             st.markdown("---")
             show_example_table(clustered, selected_cols)
 
@@ -2469,8 +2521,10 @@ def main():
     # display sidebar
     with st.sidebar:
         # title
-        st.title("Fintech App")
-        st.caption("v1.1.0 • Data updated: 2025-06-28") 
+        st.title("FinML Studio")
+        today = datetime.date.today().strftime("%Y-%m-%d")
+        st.caption(f"v1.1.0 • Last Updated On: {today}")
+        # st.caption("v1.1.0 • Data updated: 2025-06-28") 
 
         st.markdown("---")
 
@@ -2491,11 +2545,22 @@ def main():
             # on_change=lambda: st.session_state.update(page=st.session_state.sidebar_choice)
             # on_change=lambda *args: st.session_state.update(page=st.session_state.sidebar_choice)
             # on_change=_sync_page_with_sidebar
+            styles={
+                "container": {
+                    "padding": "0!important",
+                    "background-color": "transparent",    # ← key line
+                },
+                "nav-link": {
+                    "--hover-color": "rgba(255, 255, 255, 0.1)",   # lighter, subtle white
+                },
+                "nav-link-selected": {
+                    "background-color": "#f63366",
+                    "color": "white",
+                },
+            }
         )
         if choice != current:
             st.session_state.page = choice
-
-
 
         # --- Help & feedback Expander---
         with st.expander("❓ Help & Docs"):
@@ -2503,7 +2568,9 @@ def main():
             st.write("- [Source Code](https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project/tree/main/Code)")
             st.write("- [Contact Us](https://www.linkedin.com/in/alex-mak-824187247/)")
         
-        st.caption("© 2025 Alex Mak, All Rights Reserved")
+        current_year=datetime.date.today().year
+
+        st.caption(f"© {current_year} Alex Mak, All Rights Reserved")
 
     # choice = st.sidebar.radio("Go to", ["Prediction", "Dashboard"] )
 
