@@ -593,50 +593,91 @@ def show_example_table(data, selected_cols):
 
     # 1) define your master mappings once:
     DESC = {
-        "age":              "age (whole number)",
-        "education":        "education level (1,2,3…)",
-        "default":          "previous default? (1=yes,0=no)",
-        "balance":          "bank balance (decimal)",
-        "contact_telephone":"contact channel (1=telephone,0=cellular)",
-        "housing":          "housing loan? (1=yes,0=no)",
-        "loan":             "personal loan? (1=yes,0=no)",
-        "day":              "day of month of last campaign (1–31)",
-        "month":            "month of year of last campaign (1–12)",
-        "duration":         "call duration in seconds",
-        "campaign":         "times contacted this campaign (incl. this)",
-        "pdays":            "days since last campaign (-1=first time)",
-        "previous":         "times contacted before this campaign",
-        "poutcome":         "outcome of previous campaign (failure/nonexistent/success)",
-        "days_in_year":     "current day of year (1–366)",
-    }
-    EX = {
-        "age":              "42",
-        "education":        "2",
-        "default":          "0",
-        "balance":          "10000.00",
-        "contact_telephone":"1",
-        "housing":          "0",
-        "loan":             "1",
-        "day":              "15",
-        "month":            "7",
-        "duration":         "900",
-        "campaign":         "3",
-        "pdays":            "5",
-        "previous":         "2",
-        "poutcome":         "success",
-        "days_in_year":     "212",
+        "age":               "Age (whole number)",
+        "education":         "Education level (1=elementatry,2=secondary,3=post-secondary)",
+        "default":           "Previous default? (1=yes,0=no)",
+        "balance":           "bBank balance (decimal)",
+        "contact_cellular":  "Contact channel is cellular phone? (1=yes,0=no)",
+        "contact_telephone": "Contact channel is landline phone? (1=yes,0=no)",
+        "housing":           "Housing loan? (1=yes,0=no)",
+        "loan":              "Personal loan? (1=yes,0=no)",
+        "day":               "Day of month of last campaign (1–31)",
+        "month":             "Month of year of last campaign (1–12)",
+        "duration":          "Call duration in seconds",
+        "campaign":          "Times contacted this campaign (incl. this)",
+        "pdays":             "Days since last campaign (-1=first time)",
+        "previous":          "Times contacted before this campaign",
+        "poutcome":          "Outcome of previous campaign (failure/nonexistent/success)",
+        "marital_divorced":  "Divorced? (1=yes,0=no)",
+        "marital_married":   "Married? (1=yes,0=no)",
+        "marital_single":    "Single? (1=yes,0=no)",
+        "job_admin.":        "Working an administrative job? (1=yes,0=no)",
+        "job_blue_collar":   "Working a blue collar job? (1=yes,0=no)",
+        "job_entrepreneur":  "Working as a entrepreneur? (1=yes,0=no)",
+        "job_housemaid":     "Working as a housemaid? (1=yes,0=no)",
+        "job_management":    "Working in management? (1=yes,0=no)",
+        "job_retired":       "Retired? (1=yes,0=no)",
+        "job_self_employed": "Self-employed? (1=yes,0=no)",
+        "job_services":      "Work in the services industry? (1=yes,0=no)",
+        "job_student":       "Being a student? (1=yes,0=no)",
+        "job_technician":    "Work as a technician? (1=yes,0=no)",
+        "job_unemployed":    "Not working now? (1=yes,0=no)",
+        "job_unknown":       "Unknown jon? (1=yes,0=no)",
+        "days_in_year":      "Current day of year (1–366)",
+        "y":                 "Did the client subscribe the product? (1=yes,0=no) (Target Variable)",   # target, fill in later
     }
 
-    # 2) Build a DataFrame with exactly |selected_cols| columns
+    EX = {
+        "age":               "42",
+        "education":         "2",
+        "default":           "0",
+        "balance":           "10000.00",
+        "contact_cellular":  "",
+        "contact_telephone": "1",
+        "housing":           "0",
+        "loan":              "1",
+        "day":               "15",
+        "month":             "7",
+        "duration":          "900",
+        "campaign":          "3",
+        "pdays":             "5",
+        "previous":          "2",
+        "poutcome":          "success",
+        "marital_divorced":  "1",
+        "marital_married":   "0",
+        "marital_single":    "1",
+        "job_admin.":        "0",
+        "job_blue_collar":   "1",
+        "job_entrepreneur":  "0",
+        "job_housemaid":     "1",
+        "job_management":    "0",
+        "job_retired":       "1",
+        "job_self_employed": "0",
+        "job_services":      "1",
+        "job_student":       "0",
+        "job_technician":    "1",
+        "job_unemployed":    "0",
+        "job_unknown":       "1",
+        "days_in_year":      "59",
+        "y":                 "1",
+    }
+
+
+    # 1) Re-order selected_cols so ‘y’ is last (if present)
+    ordered_feats = [f for f in selected_cols if f != "y"]
+    if "y" in selected_cols:
+        ordered_feats.append("y")
+
+    # 2) Build a DataFrame with exactly |ordered_feats| columns
     feature_info = pd.DataFrame(
         index=["Description", "Example"],
-        columns=selected_cols,
+        columns=ordered_feats,
         data=""   # placeholder
     )
 
     # 3) Fill each row by looking up in the dicts
-    feature_info.loc["Description"] = [DESC.get(f, "") for f in selected_cols]
-    feature_info.loc["Example"]     = [EX.get(f,  "") for f in selected_cols]
+    feature_info.loc["Description"] = [DESC.get(f, "") for f in ordered_feats]
+    feature_info.loc["Example"]     = [EX.get(f,   "") for f in ordered_feats]
 
     # 4) Transpose & reformat
     fi = feature_info.T.reset_index().rename(columns={"index": "Feature"})
@@ -2342,62 +2383,63 @@ def overview_page(data, preprocessed):
     
     st.header("Data Overview & Export")
     st.markdown("---")
-    st.write("This page lets you download the dataset used for this app, either the original “raw” dataset or the cleaned & feature-engineered version.")
+    # st.write("This page lets you download the dataset used for this app, either the original “raWWWw” dataset or the cleaned & feature-engineered version.")
         
-    st.write("This dataset captures information from direct marketing campaigns from a Portuguese banking institution. Its goal is to predict whether its clients will subscribe a term deposit or not.")
+    # st.write("This dataset captures information from direct marketing campaigns from a Portuguese banking institution. Its goal is to predict whether its clients will subscribe a term deposit or not.")
     
+    # st.markdown("---")
+
+        # ————— Way 2: Brief narrative description —————
+    st.write("This page lets you download the dataset used for this app, either the original “raw” dataset or the cleaned & feature-engineered version.") 
+    st.markdown(
+        """
+        This dataset collected the results of a Portuguese bank’s telemarketing campaign between May 2008 and November 2010, it is later shared to the UCI ML repository and it can be accessed here. **[(Link)](https://archive.ics.uci.edu/dataset/222/bank+marketing)** 
+
+
+        It has a clssification objective by aiming to predict whether a client will subscribe to a term deposit based on:  
+        - Demographics (age, job, marital status, etc.)  
+        - Past campaign interactions (call duration, number of contacts)  
+        - Economic indicators (balance, housing/loan status)
+        """
+    )
+
     st.markdown("---")
 
+    # ————— Way 3: Feature data dictionary —————
+    with st.expander("ℹ️ Feature Descriptions"):
+        show_example_table(data, selected_cols=preprocessed.columns)
+    st.markdown("---")
+
+    # ————— Way 4: Interactive data preview & filtering —————
+    st.subheader("Data Preview")
+    cols_to_show = st.multiselect(
+        "Pick columns to preview:",
+        options=preprocessed.columns.tolist(),
+        default=preprocessed.columns.tolist()[:5]
+    )
+    if cols_to_show:
+        st.dataframe(preprocessed[cols_to_show].head(10), use_container_width=True)
+    st.markdown("---")
+
+
+    st.subheader("Data Export")
+    st.markdown("<br>", unsafe_allow_html=True)
     # 2 box with a divider separating them
     col1, col_div, col2 = st.columns([1, 0.02, 1])
 
     st.markdown("---")
 
-    
+
+
     # Raw data box
     # ─── Raw Data ──────────────────────────────────────────────
     with col1:
-        # st.subheader("Raw Data")
-
-        # # 1) Brief description
-        # st.markdown(
-        #     f"""
-        #     - **Rows:** {data.shape[0]:,}  
-        #     - **Columns:** {data.shape[1]:,}  
-        #     """
-        # )
-        # st.markdown(
-        #     """
-        #     **Contents:**  
-        #     1. Client's personal and financial information 
-        #     2. Client's Contact & campaign history 
-        #     3. The final subscription outcome 
-        #     """
-        # )
-
-        # # 2) Download buttons
-        # csv = data.to_csv(index=False).encode("utf-8")
-        # st.download_button(
-        #     "📥 Download Raw Data (.csv)",
-        #     data=csv,
-        #     file_name="raw_data.csv",
-        #     mime="text/csv",
-        # )
-        # buf = io.BytesIO()
-        # data.to_excel(buf, index=False, sheet_name="raw", engine="openpyxl")
-        # buf.seek(0)
-        # st.download_button(
-        #     "📥 Download Raw Data (.xlsx)",
-        #     data=buf,
-        #     file_name="raw_data.xlsx",
-        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        # )
         st.subheader("Raw Data")
-        st.markdown(f"- **Rows:** {data.shape[0]:,}  \n- **Cols:** {data.shape[1]:,}")
+        st.markdown(f"- Rows **(Number of Entries):** {data.shape[0]:,}  \n- Columns **(Number of Features):** {data.shape[1]:,}")
         csv_bytes = get_csv_bytes(data)
-        st.download_button("Download CSV", csv_bytes, "raw_data.csv", "text/csv")
+        st.download_button("Download CSV 📥", csv_bytes, "raw_data.csv", "text/csv")
         xlsx_buf   = get_excel_buffer(data)
-        st.download_button("Download XLSX", xlsx_buf, "raw_data.xlsx",
+        st.download_button("Download XLSX 📥", xlsx_buf, "raw_data.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
     # ─── Divider ───────────────────────────────────────────────
@@ -2407,7 +2449,7 @@ def overview_page(data, preprocessed):
         <div style="
             border-left:2px solid #ccc;
             height:100%;
-            min-height:500px;   /* adjust to match your content */
+            min-height:250px;   /* adjust to match your content */
             margin:0 auto;
         "></div> 
         """,
@@ -2417,47 +2459,12 @@ def overview_page(data, preprocessed):
     # Preprocessed data box
     # ─── Preprocessed Data ─────────────────────────────────────
     with col2:
-        # st.subheader("Preprocessed Data")
-
-        # # 1) Brief description
-        # st.markdown(
-        #     f"""
-        #     - **Rows:** {preprocessed.shape[0]:,} (-11)  
-        #     - **Columns:** {preprocessed.shape[1]:,} (+15) 
-        #     """
-        # )
-        # st.markdown(
-        #     """
-        #     **This version has been cleaned & feature‐engineered for further data & AI usages, including:**  
-        #     1. **Data Cleaning:** to remove missing & duplicate entries, include anomaly detection & removal.
-        #     2. **Data Transformation:** Encoding categorical features & scaling numerics.  
-        #     3. **Create/ modify features** from existing data.  
-        #     """
-        # )
-
-        # # 2) Download buttons
-        # csv2 = preprocessed.to_csv(index=False).encode("utf-8")
-        # st.download_button(
-        #     "📥 Download Processed Data (.csv)",
-        #     data=csv2,
-        #     file_name="preprocessed_data.csv",
-        #     mime="text/csv",
-        # )
-        # buf2 = io.BytesIO()
-        # preprocessed.to_excel(buf2, index=False, sheet_name="processed", engine="openpyxl")
-        # buf2.seek(0)
-        # st.download_button(
-        #     "📥 Download Processed Data (.xlsx)",
-        #     data=buf2,
-        #     file_name="preprocessed_data.xlsx",
-        #     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        # )
         st.subheader("Processed Data")
-        st.markdown(f"- **Rows:** {preprocessed.shape[0]:,}  \n- **Cols:** {preprocessed.shape[1]:,}")
+        st.markdown(f"- Rows **(Number of Entries):** {preprocessed.shape[0]:,}  \n- Columns **(Number of Features):** {preprocessed.shape[1]:,} **(+15)**")
         csv2 = get_csv_bytes(preprocessed)
         xlsx2 = get_excel_buffer(preprocessed)
-        st.download_button("Download CSV", csv2, "Preprocessed_Data.csv", "text/csv")
-        st.download_button("Download XLSX", xlsx2, "Preprocessed_Data.xlsx",
+        st.download_button("Download CSV 📥", csv2, "Preprocessed_Data.csv", "text/csv")
+        st.download_button("Download XLSX 📥", xlsx2, "Preprocessed_Data.xlsx",
                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     
 # Displays the final acknowledgement page
@@ -2467,18 +2474,20 @@ def acknowledgement_page(data):
     st.header("Acknowledgements")
     st.markdown("---")
     ack_html = """
-    First of all, this entire application comes from a graudate data science course project where my teammates **Zheng En Than** and **Emily Au**. We cleaned the collected data, 
-    performed exploratory data analysis, and developed the machine learning models. I sincerely thank them for their effort and hard work. 
+    First of all, this entire application comes from a graduate data science course project where my teammates **Zheng En Than** and **Emily Au**. We cleaned the collected data, 
+    performed exploratory data analysis, developed the machine learning models, and wrote a scientific report together. I sincerely thank them for their effort and hard work. 
     I would also like to thank my course instructor **Dr. Jay Newby** for his guidance and mentorship.
     <br><br>
-    This app is made with a purpose to applied our research in a high level, if you are interested to learn more about the scientific details of our work, please visit the <a href="https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project" target="_blank"><strong>User Guide</strong></a>!
+    This app is made with the purpose of applying our research on a high level. If you are interested to learn more about the scientific details of our work, please visit the <a href="https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project" target="_blank"><strong>User Guide</strong></a>!
     <br><br>
-    Additionally, I want to acknowledge **Sérgio Moro**, **P. Cortez**, and **P. Rita** for sharing the UCI ML Bank Telemarketing Dataset which is the fundament backbomne of this project.
+    Additionally, I want to acknowledge **Sérgio Moro**, **P. Cortez**, and **P. Rita** for sharing the UCI ML Bank Telemarketing Dataset, which is the fundamental backbone of this project.
     <br><br>
-    Last but not least, shout out to the user test group [TEMP NAMES]. Their opinions and feedback on this project should be recognized.
+    Last but not least, shout out to the user test group (Steven Ge, TBA). Their opinions and feedback on this project should be recognized.
 
     """
     st.markdown(ack_html, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
 
     st.image("Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
     # st.image("Code/Model_Deployment/Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
