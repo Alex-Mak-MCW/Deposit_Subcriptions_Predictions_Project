@@ -326,7 +326,7 @@ def kde_age_distribution(df, field="age", filter_col="y", filter_val=1, bandwidt
         .properties(
             width="container",
             height=300,
-            title="Age Distribution of Wins (KDE)"
+            title="Age Distribution over Wins (KDE)"
         )
         .configure_title(fontSize=18, anchor="start")
         .configure_axis(labelFontSize=12, titleFontSize=14)
@@ -773,7 +773,7 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
 
 # Function that plots Tree-Based Importance to show importance of each factor
 def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
-    st.header("Important Factors That Help Build the Customer Groups")
+    st.header("Important Factors That Formed the Customer Groups (& Outliers)")
 
     # build tabs for users to traverse
     cluster_labels = sorted(set(data["Cluster"]))
@@ -801,7 +801,7 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
 
             # 3) Create a smaller figure on a light-grey background
             fig, ax = plt.subplots(
-                figsize=(6, 4),            # smaller width x height
+                figsize=(6, 4.5),            # smaller width x height
             )
             light_bg = "#f5f5f5"
             fig.patch.set_facecolor(light_bg)
@@ -824,7 +824,7 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
 
             # 6) Style axes & title with dark text
             title = ("Outliers" if cl == -1 else f"Customer Group {cl+1}")
-            ax.set_title(f"Top {top_n} Features for {title}", color="#333", fontsize=12)
+            ax.set_title(f"Top {top_n} Important Features for {title}", color="#333", fontsize=12)
             ax.set_xlabel("Features", color="#333", fontsize=10)
             ax.set_ylabel("Importance Score", color="#333", fontsize=10)
             ax.tick_params(colors="#333")
@@ -949,7 +949,8 @@ def show_lime_explanation_custom(
     selected_cols: list,
     top_n: int = 5
 ):
-    st.subheader("Adjust the values for your client!")
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.subheader("Adjust the values for your client. Use the Table Above to Refer to the Right Features")
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
@@ -958,7 +959,7 @@ def show_lime_explanation_custom(
 
     # 2) Collect slider inputs inside a FORM
     with st.form("lime_form"):
-        st.markdown("#### Use the Table Above to Refer to the Right Features:")
+        # st.markdown("#### Use the Table Above to Refer to the Right Features:")
         raw_vals = {}
         for feat in top_feats:
             lo, hi = float(data[feat].min()), float(data[feat].max())
@@ -1130,7 +1131,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
 
 
     # ─── Display LIME output for label=1 (“Yes”) ───
-    st.markdown("**1. LIME: Made a local model for your input to highligjt which feature matters the most!**")
+    st.markdown("**1. LIME: Explains your model’s prediction by creating a simple model just around your input, showing which features had the biggest influence on the result!**")
     lime_exp = lime_explainer.explain_instance(
         X.values.flatten(),
         model.predict_proba,
@@ -1157,7 +1158,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     # components.html(lime_exp.as_html(), height=350)
 
     # ─── SHAP force plot for P(Yes) ───
-    st.markdown("**2. SHAP: Shows how much each of your input impact the final prediction!**")
+    st.markdown("**2. SHAP: Shows how much each of your inputs helps push the prediction higher or lower!**")
     expl = shap_explainer(X)     # Explanation with shape (1, n_features)
     single_exp = expl[0]          # pick the one row
     shap.initjs()
@@ -1294,7 +1295,7 @@ def make_prediction(model, user_input):
 # Takes user input for decisiion tree model
 def user_input_form_decision_tree():
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader('"Tree-based Model that Makes Decisions by Splitting Data Recursively on Feature Values"')
+    st.subheader('"A Tree-based Model that Makes Decisions by Splitting Data Repeatedly on Feature Values"')
 
     # 1) Build the pros/cons table
     dt_pros_cons_df = pd.DataFrame({
@@ -1391,7 +1392,7 @@ def user_input_form_decision_tree():
 def user_input_form_random_forest():
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader('"Decision Tree Model, but Made Decisions with 100 Trees"')
+    st.subheader('"Combining many Decision Trees and their Predictions into 1 Outcome"')
 
     # 1) Build the pros/cons table
     rf_pros_cons_df = pd.DataFrame({
@@ -1496,7 +1497,7 @@ def user_input_form_random_forest():
 def user_input_form_xgboost():
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader('"An Intelligent Tree that Learns from its 100 Ancestors to Make Rules."')
+    st.subheader('"An Intelligent Tree that Learns from its 100 Ancestors to Make Educated Decisions."')
 
     # 1) Build the pros/cons table
     xgb_pros_cons_df = pd.DataFrame({
@@ -1716,7 +1717,7 @@ def home_page(models, data, raw_data):
     #     '<h2 class="card-title">Welcome to the FinDS-ML Studio!</h2>',
     #     unsafe_allow_html=True
     # )
-    st.header("Welcome to the FinDS-ML Studio!")
+    st.header("Welcome to Fin-ML Studio!")
     st.markdown("---")
 
 
@@ -1739,7 +1740,7 @@ def home_page(models, data, raw_data):
     cards = [
         (
             "Subscription Prediction",
-            "Use our ML model to predict will a client subscribe the product!",
+            "Use our AI/ML model to predict will a client subscribe the product!",
             "Deposit Subscription Prediction",
             "Visualizations/Homepage_Icons/predictive-icon.jpg"
         ),
@@ -1794,7 +1795,7 @@ def prediction_page(models, data):
     # introduction
     st.header("Predicting Term Deposit Subscription")
     st.markdown("---")
-    st.subheader("Choose an AI model below to Make the Predictions you Want!")
+    st.subheader("Choose an AI/ML Model below to Make Your Predictions!")
 
     # 0) build full_feature_list once
     full_feature_list = [c for c in data.columns if c != "y"]
@@ -1821,7 +1822,7 @@ def prediction_page(models, data):
             st.markdown("<br>", unsafe_allow_html=True)
 
             # button that allos prediction
-            if st.button(f"Predict with {name}", key=name):
+            if st.button(f"Predict with {name}!", key=name):
                 st.markdown("---", unsafe_allow_html=True)
                 pred = make_prediction(model, inputs)
                 # st.markdown("<br><br>", unsafe_allow_html=True)
@@ -2033,12 +2034,12 @@ def dashboard_page(data):
             <div class="rec-card">
             <h2>Marketing-based Recommendations</h2>
             <ul>
-                <li>Customers are more likely to subscribe on specific months (Mar, Aug, Nov, Dec).</li>
-                <li>Most customers are around in their early 30s to late 30s.</li>
-                <li>Conversion rate increases a lot when duration goes up, age doesn't play a huge factor.</li>
-                <li>Customers with no loans are more likely to subscribe when the call was not long.</li>
-                <li>Most customers have cellular samples thus they may not have a lot of time → need to develop strategies that can make them stay longer.</li>
-                <li>Over 50% of previous successful cases still subscribe when we call; focus on them.</li>
+                <li>Target campaigns in March, August, November, and December. They are the peak subscription months.</li>
+                <li>Focus on customers in their thirties, they are the most responsive group.</li>
+                <li>Boost conversion by increasing call duration, this is more impactful than age.</li>
+                <li>Customers without loans are more likely to convert during shorter calls.</li>
+                <li>Since most use cellular phones, get their attention quickly and increase engagement time.</li>
+                <li>Re-engage past subscribers. Over 50% convert again when contacted.</li>
             </ul>
             </div>
             """
@@ -2046,7 +2047,7 @@ def dashboard_page(data):
 
         # top-right box: display plots for both Sales and Marketing
         with row1_col2:
-            st.subheader("Campaign Trend Over Time")
+            st.subheader("Marketing Campaign Trend Over Time")
             ts_tab, ms_tab = st.tabs(["Monthly Count","Monthly Success"])
             with ts_tab:
                 # daily number of success over time plot
@@ -2062,7 +2063,7 @@ def dashboard_page(data):
     
         # bottom-left box: works both Sales and Marketing
         with row2_col1:
-            st.subheader("Outcome by Channel & Loans")
+            st.subheader("Wins by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
             with contact_tab:
                 # Plot 3: contact type pie (Plotly)
@@ -2077,9 +2078,9 @@ def dashboard_page(data):
 
         # Bottom-right box: distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
-            st.subheader("Distributions & Heatmaps")
+            st.subheader("Distributions & Heatmaps Over Wins")
             dist_tab, heat_tab, loan_heat_tab = st.tabs([
-                "Age KDE","Age×Duration Heatmap","Loan×Duration Heatmap"
+                "Age Distribution Over Wins","Age×Duration Heatmap","Loan×Duration Heatmap"
             ])
 
             with dist_tab:
@@ -2114,12 +2115,12 @@ def dashboard_page(data):
             <div class="rec-card">
             <h2>Sales-based Recommendations</h2>
             <ul>
-                <li>If the client subscribed our product before, they are more likely to subscribe again!</li>
-                <li>Choose to contact the clients on either summer or around Christmas.</li>
-                <li>Don't worry about clients who owed us! 40% of clients that has loans still subscibes to us!</li>
-                <li>Over 50% of previous successful case still subscribes when we call, focus on them.</li>
-                <li>Call as long as possible (ideally over 9 minutes). Call duration is the most important factor determining the campaign outcome!</li>
-                <li>Most customers have cellular samples thus they may not have a lot of time, you need to attract their interest quickly!</li>
+                <li>Prior subscribers are highly likely to convert again, prioritize follow-ups with them.</li>
+                <li>Focus outreach during summer or near Christmas, when conversion rates are highest.</li>
+                <li>Don’t overlook clients with existing loans —> 40% still convert successfully.</li>
+                <li> Duration is crucial for success —> aim for longer, value-driven conversations (at least 9 minutes).</li>
+                <li>Most clients use mobile phones — grab their attention quickly and make every second count.</li>
+                <li>On most days, fewer than 100 calls were made, many even below 50. Increase outreach volume to improve campaign coverage.</li>
             </ul>
             </div>
             """
@@ -2128,7 +2129,7 @@ def dashboard_page(data):
         # Top-right box: display plots for both Sales and Marketing
         with row1_col2:
             # st.markdown('<div class="box-card">', unsafe_allow_html=True)
-            st.subheader("Campaign Trend Over Time")
+            st.subheader("Marketing Campaign Trend Over Time")
             ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
             with ts_tab:
                 # daily number of success over time plot
@@ -2140,7 +2141,7 @@ def dashboard_page(data):
     
         # Bottom-left box: display plots for both Sales and Marketing
         with row2_col1:
-            st.subheader("Outcome by Channel & Loans")
+            st.subheader("Campaign Outcome by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
             with contact_tab:
                 # Plot 3: contact type pie (Plotly)
@@ -2156,7 +2157,7 @@ def dashboard_page(data):
         # Bottom-right box: displays plot for both Sales and Marketing
         # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
-            st.subheader("Outcome Based on Past Campaign's Outcomes")
+            st.subheader("Campaign Outcome Based on Past Campaign's Outcomes")
             no_past_tab, past_tab, inconclusive_tab= st.tabs([
                 "No Past Campaign","Successful Past Campaign", "Inconclusive Past Campaign"
             ])
