@@ -1127,11 +1127,23 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     assert X.shape[0] == 1, "Need exactly one row of inputs"
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.header("Through Explainable AI (XAI):")
+    # st.header("Through Explainable AI (XAI):")
 
 
     # ─── Display LIME output for label=1 (“Yes”) ───
-    st.markdown("**1. LIME: Explains your model’s prediction by creating a simple model just around your input, showing which features had the biggest influence on the result!**")
+    # st.markdown("**1. LIME: Explains your model’s prediction by creating a simple model just around your input, showing which features had the biggest influence on the result!**")
+    st.markdown(
+        """
+        <strong>
+        1. <span style="color:#f83464;">LIME</span> (Local Interpretable Model-Agnostic Explanations): <br></br>
+        Explains your model’s prediction by  
+        <span style="color:#00BCD4;">creating a simple model just around your input</span>, showing which  
+        <span style="color:#00BCD4;">features had the biggest influence</span> 
+        on the result!<br>
+        </strong>
+        """,
+        unsafe_allow_html=True
+    )
     lime_exp = lime_explainer.explain_instance(
         X.values.flatten(),
         model.predict_proba,
@@ -1158,7 +1170,18 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     # components.html(lime_exp.as_html(), height=350)
 
     # ─── SHAP force plot for P(Yes) ───
-    st.markdown("**2. SHAP: Shows how much each of your inputs helps push the prediction higher or lower!**")
+    # st.markdown("**2. SHAP: Shows how much each of your inputs helps push the prediction higher or lower!**")
+    st.markdown(
+        """
+        <br></br>
+        <strong>
+        2. <span style="color:#f83464;">SHAP</span> (SHapley Additive exPlanations):<br></br>
+        Explains your model’s prediction by showing how much each of your inputs 
+        <span style="color:#00BCD4;">helps push the prediction higher or lower!</span>
+        </strong><br>
+        """,
+        unsafe_allow_html=True
+    )
     expl = shap_explainer(X)     # Explanation with shape (1, n_features)
     single_exp = expl[0]          # pick the one row
     shap.initjs()
@@ -1319,7 +1342,12 @@ def user_input_form_decision_tree():
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    st.subheader("Fill in Your Customer's Values:")
+
+    st.markdown(
+        "<h3 style='color:#00BCD4;'>Fill in Your Customer's Values:</h3>",
+        unsafe_allow_html=True
+    )
+    # st.subheader("Fill in Your Customer's Values:")
 
 
     # Calculate the current day of the year for days_in_year
@@ -1414,7 +1442,11 @@ def user_input_form_random_forest():
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    st.subheader("Fill in Your Customer's Values:")
+    # st.subheader("Fill in Your Customer's Values:")
+    st.markdown(
+        "<h3 style='color:#00BCD4;'>Fill in Your Customer's Values:</h3>",
+        unsafe_allow_html=True
+    )
 
 
     # Get current date
@@ -1519,7 +1551,11 @@ def user_input_form_xgboost():
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    st.subheader("Fill in Your Customer's Values:")
+    # st.subheader("Fill in Your Customer's Values:")
+    st.markdown(
+        "<h3 style='color:#00BCD4;'>Fill in Your Customer's Values:</h3>",
+        unsafe_allow_html=True
+    )
 
 
     # Get the current date
@@ -1647,14 +1683,24 @@ def display_prediction(prediction):
             st.image("Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
             # st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
         with col2:
-            st.write("### The Marketing Campaign will Succeed!")
+            # st.write("### The Marketing Campaign will Succeed!")
+            st.markdown(
+                f"""<h3>The Marketing Campaign will 
+                <span style="color:#22C55E"><u>Succeed!</u></span></h3>""",
+                unsafe_allow_html=True
+            )
     # Predict failure case:
     elif prediction[0] == 0:
         with col1:
             st.image("Visualizations/Result_Icons/failure_icon.png", width=50)  # Use an icon for failure
             # st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
         with col2:
-            st.write("### The Marketing Campaign will Fail.")
+            # st.write("### The Marketing Campaign will Fail.")
+            st.markdown(
+                f"""<h3>The Marketing Campaign will 
+                <span style="color:#EF4444"><u>Fail!</u></span></h3>""",
+                unsafe_allow_html=True
+            )
 
 
 # --- PAGE FUNCTIONS ---
@@ -1717,12 +1763,28 @@ def home_page(models, data, raw_data):
     #     '<h2 class="card-title">Welcome to the FinDS-ML Studio!</h2>',
     #     unsafe_allow_html=True
     # )
-    st.header("Welcome to Fin-ML Studio!")
+    # st.header("Welcome to Fin-ML Studio!")
+    st.markdown(
+        "<h1 style='color:#8F67FF;'>Welcome to FinML Studio!</h1>",
+        unsafe_allow_html=True
+    )
     st.markdown("---")
 
 
 
-    st.markdown('<p class="card-desc">This app uses data science and machine learning methodologies to improve the performance of a bank financial product, especially in the areas of: </p>', unsafe_allow_html=True)
+    # st.markdown('<p class="card-desc">This app uses data science and machine learning methodologies to improve the performance of a bank financial product, especially in the areas of: </p>', unsafe_allow_html=True)
+    st.markdown(
+    """
+    <p class="card-desc">
+        This app uses 
+        <span style="color:#00BCD4;">data science</span> 
+        and 
+        <span style="color:#00BCD4;">machine learning</span> 
+        methodologies to improve the performance of a bank financial product, especially in the areas of:
+    </p>
+    """,
+    unsafe_allow_html=True
+)
     st.markdown(
         """
         <ol class="card-desc" style="margin-left:1.5rem; padding-left:0;">
@@ -1766,6 +1828,20 @@ def home_page(models, data, raw_data):
 
     # displays 4 boxes for the app's functionalities
     cols = st.columns(4, gap="large")
+
+    st.markdown("""
+        <style>
+        :root{ --card-blue:#8F67FF; }        /* pick your blue */
+        .card-title{
+        color: var(--card-blue) !important; 
+        font-weight: 700;
+        margin: 0 0 6px 0;
+        }
+        /* optional: lighter on hover */
+        .card-container:hover .card-title{ color:#60A5FA; } 
+        </style>
+        """, unsafe_allow_html=True)
+
     for col, (title, desc, page_key, img_path) in zip(cols, cards):
         with col:
             uri = _img_to_base64(img_path)
@@ -1793,7 +1869,11 @@ def home_page(models, data, raw_data):
 # Prediction Page
 def prediction_page(models, data):
     # introduction
-    st.header("Predicting Term Deposit Subscription")
+    # st.header("Predicting Term Deposit Subscription")
+    st.markdown(
+            "<h1 style='color:#8F67FF;'>Predicting Term Deposit Subscription</h1>",
+            unsafe_allow_html=True
+        )
     st.markdown("---")
     st.subheader("Choose an AI/ML Model below to Make Your Predictions!")
 
@@ -1822,7 +1902,7 @@ def prediction_page(models, data):
             st.markdown("<br>", unsafe_allow_html=True)
 
             # button that allos prediction
-            if st.button(f"Predict with {name}!", key=name):
+            if st.button(f"Predict with {name}  🔍", key=name):
                 st.markdown("---", unsafe_allow_html=True)
                 pred = make_prediction(model, inputs)
                 # st.markdown("<br><br>", unsafe_allow_html=True)
@@ -1837,7 +1917,8 @@ def prediction_page(models, data):
                 # st.markdown("""<br></br>""")
 
                 # Wrap around XAI explanations in an expander
-                with st.expander("🔍 Check how the model makes its decision!", expanded=True):
+
+                with st.expander("🧠 Check how the model makes its decision through explainable AI (XAI)", expanded=True):
                     show_explanations(
                         model,
                         inputs,
@@ -2531,7 +2612,13 @@ def main():
     # display sidebar
     with st.sidebar:
         # title
-        st.title("FinML Studio")
+        # st.title("FinML Studio")
+        st.markdown(
+            "<h1 style='color:#8F67FF;'>FinML Studio</h1>",
+            unsafe_allow_html=True
+        )
+
+
         today = datetime.date.today().strftime("%Y-%m-%d")
         st.caption(f"v1.1.0 • Last Updated On: {today}")
         # st.caption("v1.1.0 • Data updated: 2025-06-28") 
@@ -2596,7 +2683,7 @@ def main():
 
     # back page button at the top of every page except home page
     if st.session_state.page != "Home":
-        if st.button("← Back to Home"):
+        if st.button("🏠 Back to Home"):
             st.session_state.page = "Home"
             # st.experimental_rerun()
             st.rerun()
