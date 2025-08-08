@@ -1984,9 +1984,10 @@ def dashboard_page(data):
         .rec-card {
         background-color: #393939;
         color: white;
-        padding: 1.5rem;
+        padding: 1rem;
         border-radius: 10px;
-        margin-bottom: 1.5rem;
+        margin-bottom: -10.5rem;
+        margin-top: 0rem;
         }
         .rec-card h2, .rec-card li {
         color: white; 
@@ -2001,7 +2002,12 @@ def dashboard_page(data):
     )
 
     # display introductuin
-    st.header("Interactive Dashboard - Choose Your Persona & Explore Key Metrics and Visualizations")
+    # st.header("Interactive Dashboard - Choose Your Persona & Explore Key Metrics and Visualizations")
+    st.markdown(
+        "<h1 style='color:#8F67FF;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
+        unsafe_allow_html=True
+    )
+    st.markdown("---")
     # st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
     st.markdown("---")
 
@@ -2039,6 +2045,15 @@ def dashboard_page(data):
     with k1:
         # st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
         persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
+        # st.metric("Most Important Factor:", "Call Duration")
+        st.markdown("""
+            <style>
+            [data-testid="stMetricValue"] {
+                color: #f83464;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+
         st.metric("Most Important Factor:", "Call Duration")
         # st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2110,10 +2125,17 @@ def dashboard_page(data):
 
         # Top-left box: Marketing-based recommendation
         with row1_col1:
+            st.markdown("""
+                <style>
+                .rec-card h3 {
+                    color: #00BCD4; /* Teal */
+                }
+                </style>
+                """, unsafe_allow_html=True)
 
             recommendations_html = """
             <div class="rec-card">
-            <h2>Marketing-based Recommendations</h2>
+            <h3>Marketing-based Recommendations</h3>
             <ul>
                 <li>Target campaigns in March, August, November, and December. They are the peak subscription months.</li>
                 <li>Focus on customers in their thirties, they are the most responsive group.</li>
@@ -2128,7 +2150,13 @@ def dashboard_page(data):
 
         # top-right box: display plots for both Sales and Marketing
         with row1_col2:
-            st.subheader("Marketing Campaign Trend Over Time")
+            st.markdown('<br>', unsafe_allow_html=True)
+            # st.markdown('<div class="box-card">', unsafe_allow_html=True)
+            st.markdown(
+                "<h3 style='color:#00BCD4;'>Marketing Campaign Trend Over Time</h3>",
+                unsafe_allow_html=True
+            )
+            # st.subheader("Marketing Campaign Trend Over Time")
             ts_tab, ms_tab = st.tabs(["Monthly Count","Monthly Success"])
             with ts_tab:
                 # daily number of success over time plot
@@ -2144,7 +2172,11 @@ def dashboard_page(data):
     
         # bottom-left box: works both Sales and Marketing
         with row2_col1:
-            st.subheader("Wins by Channel & Loans")
+            st.markdown(
+                "<h3 style='color:#00BCD4;'>Wins by Channel & Loans</h3>",
+                unsafe_allow_html=True
+            )
+            # st.subheader("Wins by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
             with contact_tab:
                 # Plot 3: contact type pie (Plotly)
@@ -2159,7 +2191,11 @@ def dashboard_page(data):
 
         # Bottom-right box: distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
-            st.subheader("Distributions & Heatmaps Over Wins")
+            st.markdown(
+                "<h3 style='color:#00BCD4;'>Distributions & Heatmaps Over Wins</h3>",
+                unsafe_allow_html=True
+            )
+            # st.subheader("Distributions & Heatmaps Over Wins")
             dist_tab, heat_tab, loan_heat_tab = st.tabs([
                 "Age Distribution Over Wins","Age×Duration Heatmap","Loan×Duration Heatmap"
             ])
@@ -2191,26 +2227,40 @@ def dashboard_page(data):
 
         # Top-left box: Sales-based recommendation
         with row1_col1:
+            st.markdown("""
+                <style>
+                .rec-card h3 {
+                    color: #00BCD4; /* Teal */
+                }
+                </style>
+                """, unsafe_allow_html=True)
 
             recommendations_html = """
-            <div class="rec-card">
-            <h2>Sales-based Recommendations</h2>
-            <ul>
-                <li>Prior subscribers are highly likely to convert again, prioritize follow-ups with them.</li>
-                <li>Focus outreach during summer or near Christmas, when conversion rates are highest.</li>
-                <li>Don’t overlook clients with existing loans —> 40% still convert successfully.</li>
-                <li> Duration is crucial for success —> aim for longer, value-driven conversations (at least 9 minutes).</li>
-                <li>Most clients use mobile phones — grab their attention quickly and make every second count.</li>
-                <li>On most days, fewer than 100 calls were made, many even below 50. Increase outreach volume to improve campaign coverage.</li>
-            </ul>
-            </div>
-            """
+                <div class="rec-card">
+                <h3>Sales-Based Recommendations</h3>
+                <ul>
+                    <li>Prior subscribers are highly likely to convert again, prioritize follow-ups with them.</li>
+                    <li>Focus outreach during summer or near Christmas, when conversion rates are highest.</li>
+                    <li>Don’t overlook clients with existing loans —> 40% still convert successfully.</li>
+                    <li>Duration is crucial for success —> aim for longer, value-driven conversations (at least 9 minutes).</li>
+                    <li>Most clients use mobile phones — grab their attention quickly and make every second count.</li>
+                    <li>On most days, fewer than 100 calls were made, many even below 50. Increase outreach volume to improve campaign coverage.</li>
+                </ul>
+                </div>
+                """
+
             st.markdown(recommendations_html, unsafe_allow_html=True)
+
 
         # Top-right box: display plots for both Sales and Marketing
         with row1_col2:
+            st.markdown('<br>', unsafe_allow_html=True)
             # st.markdown('<div class="box-card">', unsafe_allow_html=True)
-            st.subheader("Marketing Campaign Trend Over Time")
+            st.markdown(
+                "<h3 style='color:#00BCD4;'>Marketing Campaign Trend Over Time</h3>",
+                unsafe_allow_html=True
+            )
+            # st.subheader("Marketing Campaign Trend Over Time")
             ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
             with ts_tab:
                 # daily number of success over time plot
@@ -2222,7 +2272,11 @@ def dashboard_page(data):
     
         # Bottom-left box: display plots for both Sales and Marketing
         with row2_col1:
-            st.subheader("Campaign Outcome by Channel & Loans")
+            st.markdown(
+                "<h3 style='color:#00BCD4;'>Campaign Outcome by Channel & Loans</h3>",
+                unsafe_allow_html=True
+            )
+            # st.subheader("Campaign Outcome by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
             with contact_tab:
                 # Plot 3: contact type pie (Plotly)
@@ -2238,7 +2292,11 @@ def dashboard_page(data):
         # Bottom-right box: displays plot for both Sales and Marketing
         # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
-            st.subheader("Campaign Outcome Based on Past Campaign's Outcomes")
+            st.markdown(
+                "<h3 style='color:#00BCD4;'>Current Campaign Outcome Based on Past Outcomes</h3>",
+                unsafe_allow_html=True
+            )
+            # st.subheader("Campaign Outcome Based on Past Campaign's Outcomes")
             no_past_tab, past_tab, inconclusive_tab= st.tabs([
                 "No Past Campaign","Successful Past Campaign", "Inconclusive Past Campaign"
             ])
