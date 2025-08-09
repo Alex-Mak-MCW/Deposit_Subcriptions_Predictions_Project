@@ -589,7 +589,11 @@ def auto_hdbscan(X, min_size=10):
 # Function to show feature example and descriptions table
 def show_example_table(data, selected_cols):
 
-    st.header("Feature Descriptions & Examples:")
+    st.subheader("Feature Descriptions & Examples:")
+    # st.markdown(
+    #     f"""<h2>{'<span style="color:#8F67FF;">Feature Descriptions & Examples:</span>'}</h2>""",
+    #     unsafe_allow_html=True
+    # )
 
     # 1) define your master mappings once:
     DESC = {
@@ -692,7 +696,11 @@ def show_example_table(data, selected_cols):
 def show_cluster_feature_means_raw(data, selected_cols):
 
     # ─── Cluster Means & Δ-Means Tables ───────────────────────────────
-    st.header("Cluster Feature Means Table")
+    st.markdown(
+        f"""<h2>{'<span style="color:#8F67FF;">Cluster Feature Means Table</span>'}</h2>""",
+        unsafe_allow_html=True
+    )
+    st.subheader("For Regular Means:")
     cluster_means = data.groupby("Cluster")[selected_cols].mean().round(2)
     overall_mean  = data[selected_cols].mean()
     delta_means   = (cluster_means.subtract(overall_mean, axis=1)).round(2)
@@ -721,7 +729,8 @@ def show_cluster_feature_means_raw(data, selected_cols):
     )
     st.dataframe(styled_means)
 
-    st.write("Δ-means (Customer Group Mean - Overall Mean):")
+    st.subheader("For Δ-means (Customer Group Mean - Overall Mean):")
+    # st.write("Δ-means (Customer Group Mean - Overall Mean):")
     styled_delta = (
         delta_means
         .style
@@ -773,7 +782,11 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
 
 # Function that plots Tree-Based Importance to show importance of each factor
 def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
-    st.header("Important Factors That Formed the Customer Groups (& Outliers)")
+    st.markdown(
+        f"""<h2>{'<span style="color:#8F67FF;">Important Factors That Formed the Customer Groups (& Outliers)</span>'}</h2>""",
+        unsafe_allow_html=True
+    )
+    # st.header("Important Factors That Formed the Customer Groups (& Outliers)")
 
     # build tabs for users to traverse
     cluster_labels = sorted(set(data["Cluster"]))
@@ -898,7 +911,14 @@ def show_shap_explanation_custom(
     pred = rf_model.predict(scaled_pt)[0]
     label = "Outliers" if pred == -1 else f"Customer Group{pred}"
     proba = rf_model.predict_proba(scaled_pt)[0][pred]
-    st.write(f"**Predicted Customer Group: ** {label} (probability={proba*100:.2f}%)")
+    # st.write(f"**Predicted Customer Group: ** {label} (probability={proba*100:.2f}%)")
+
+    st.markdown(
+        f"""<p><strong>Predicted Customer Group:</strong> 
+        <span style='color:#FFC107 !important;'><u>{label}</u></span> 
+        (probability=<span style='color:#FFC107 !important;'><u>{proba*100:.2f}%</u></span>)</p>""",
+        unsafe_allow_html=True
+    )
 
     # Build a single‐output explainer for the “pred” class probability:
     explainer = shap.Explainer(
@@ -987,8 +1007,25 @@ def show_lime_explanation_custom(
         label_map  = {cid: ("Outliers" if cid==-1 else f"Customer Group {cid+1}") for cid in sk_classes}
         class_names = [label_map[cid] for cid in sk_classes]
 
-        st.subheader(f"Predicted Outcome: {label_map[pred_label]} "
-                f"(probability={rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.2f}%)")
+        # st.subheader(f"Predicted Outcome: {label_map[pred_label]} "
+        #         f"(probability={rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.2f}%)")
+
+        msg = f"Predicted Outcome: <span style='color: #FFC107;'><u>{label_map[pred_label]}</u></span>, (probability= <span style='color:#FFC107;'><u>{rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.0f}%</u></span>)"
+
+        st.markdown(f"<h2>{msg}</h2>", unsafe_allow_html=True)
+
+        # st.markdown(
+        #     f"""<h2>Predicted Outcome <span style="color:#FFC107;">{label_map[pred_label]}</span> (prob=
+        #     <span style='color:#FFC107 !important;'>{rf_model.predict_proba(scaled_pt)[0][pred_index]:.2f}%</span>
+        #     </h2>""",
+        #     unsafe_allow_html=True
+        # )
+        # st.markdown(
+        #     f"""<h2><strong>Predicted Outcome:</strong> 
+        #     <span style='color:#FFC107 !important;'>{label_map[pred_label]}</span> 
+        #     (prob=<span style='color:#FFC107 !important;'>{rf_model.predict_proba(scaled_pt)[0][pred_index]:.2f}%</span>)</h2>""",
+        #     unsafe_allow_html=True
+        # )
         st.markdown("---")
 
     # # # 5) Prepare a small sample for LIME (cap at 200 rows)
@@ -1034,7 +1071,11 @@ def show_lime_explanation_custom(
 
 # Function that plots 3D Scatter on Raw
 def plot_3d_clusters_raw(data, selected_cols, top_features):
-    st.header("3D Cluster Visualization")
+    st.markdown(
+        f"""<h2>{'<span style="color:#8F67FF;">3D Cluster Visualization</span>'}</h2>""",
+        unsafe_allow_html=True
+    )
+    # st.header("3D Cluster Visualization")
     
     # pick the top 3 features
     top3 = top_features[:3]
@@ -1135,7 +1176,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     st.markdown(
         """
         <strong>
-        1. <span style="color:#f83464;">LIME</span> (Local Interpretable Model-Agnostic Explanations): <br></br>
+        1. <span style="color:#FFC107;">LIME</span> (Local Interpretable Model-Agnostic Explanations): <br></br>
         Explains your model’s prediction by  
         <span style="color:#00BCD4;">creating a simple model just around your input</span>, showing which  
         <span style="color:#00BCD4;">features had the biggest influence</span> 
@@ -1175,7 +1216,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
         """
         <br></br>
         <strong>
-        2. <span style="color:#f83464;">SHAP</span> (SHapley Additive exPlanations):<br></br>
+        2. <span style="color:#FFC107;">SHAP</span> (SHapley Additive exPlanations):<br></br>
         Explains your model’s prediction by showing how much each of your inputs 
         <span style="color:#00BCD4;">helps push the prediction higher or lower!</span>
         </strong><br>
@@ -1344,7 +1385,7 @@ def user_input_form_decision_tree():
     st.markdown("---")
 
     st.markdown(
-        "<h3 style='color:#00BCD4;'>Fill in Your Customer's Values:</h3>",
+        "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
         unsafe_allow_html=True
     )
     # st.subheader("Fill in Your Customer's Values:")
@@ -1444,7 +1485,7 @@ def user_input_form_random_forest():
     st.markdown("---")
     # st.subheader("Fill in Your Customer's Values:")
     st.markdown(
-        "<h3 style='color:#00BCD4;'>Fill in Your Customer's Values:</h3>",
+        "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
         unsafe_allow_html=True
     )
 
@@ -1553,7 +1594,7 @@ def user_input_form_xgboost():
     st.markdown("---")
     # st.subheader("Fill in Your Customer's Values:")
     st.markdown(
-        "<h3 style='color:#00BCD4;'>Fill in Your Customer's Values:</h3>",
+        "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
         unsafe_allow_html=True
     )
 
@@ -1831,7 +1872,7 @@ def home_page(models, data, raw_data):
 
     st.markdown("""
         <style>
-        :root{ --card-blue:#8F67FF; }        /* pick your blue */
+        :root{ --card-blue:#FFC107; }        /* pick your blue */
         .card-title{
         color: var(--card-blue) !important; 
         font-weight: 700;
@@ -1933,12 +1974,12 @@ def dashboard_page(data):
         """
         <style>
         .kpi-card {
-          background-color: rgba(255, 255, 255, 0.5);
-          border-radius: 12px;
-          padding: 0.5rem 0;
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-          text-align: center;
-          margin-bottom: 0rem;
+        background-color: rgba(255, 255, 255, 0.5);
+        border-radius: 12px;
+        padding: 0.25rem 0;       /* less vertical padding */
+        margin-bottom: -2rem;         /* remove extra gap below */
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        text-align: center;
         }
         /* If you use Plotly inside the card, make its paper transparent */
         .kpi-card .js-plotly-plot .plotly {
@@ -2003,12 +2044,26 @@ def dashboard_page(data):
 
     # display introductuin
     # st.header("Interactive Dashboard - Choose Your Persona & Explore Key Metrics and Visualizations")
-    st.markdown(
-        "<h1 style='color:#8F67FF;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
-        unsafe_allow_html=True
-    )
-    st.markdown("---")
-    # st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
+    col1, col2 = st.columns([6, 1])  # 3:1 width ratio
+
+    with col1:
+        st.markdown(
+            "<h1 style='color:#8F67FF; margin-bottom:0;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
+            unsafe_allow_html=True
+        )
+
+    with col2:
+        persona = st.selectbox(
+            "User Persona:",  # empty label so it doesn't show above
+            ["Salesperson", "Marketing Manager"]
+        )
+    # st.markdown(
+    #     "<h1 style='color:#8F67FF;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown("---")
+    # # st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
+    # persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
     st.markdown("---")
 
     # sub function: visually shows KPIs
@@ -2044,14 +2099,14 @@ def dashboard_page(data):
     # Col 1: persona selector + metric
     with k1:
         # st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
-        persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
+        # persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
         # st.metric("Most Important Factor:", "Call Duration")
         st.markdown("""
             <style>
             [data-testid="stMetricValue"] {
                 color: #f83464;
+                font-size: 2.5rem;      /* increase value font size */
             }
-            </style>
             """, unsafe_allow_html=True)
 
         st.metric("Most Important Factor:", "Call Duration")
@@ -2315,7 +2370,15 @@ def dashboard_page(data):
 
 # Displays clustering page
 def clustering_page(data): 
-    st.header("Customer Segmentation")
+    st.markdown(
+                "<h1 style='color:#8F67FF;'>Customer Segmentation</h1>",
+                unsafe_allow_html=True
+            )
+    # st.header("Customer Segmentation")
+
+    st.markdown("<br>",unsafe_allow_html=True)
+
+    #00BCD4
 
     # ─── 0) Setup expander state & callback ────────────────────────────
     if "cluster_expanded" not in st.session_state:
@@ -2326,7 +2389,7 @@ def clustering_page(data):
 
     
     # let users to choose the features they want to use for clustering
-    st.subheader('Feature Selection')
+    # st.subheader('Feature Selection')
 
     # 1) Define your groups here:
     FEATURE_GROUPS = {
@@ -2349,7 +2412,8 @@ def clustering_page(data):
         }.items()
     }
 
-    chosen = st.multiselect("Select feature groups:", list(FEATURE_GROUPS.keys()))
+    
+    chosen = st.multiselect("Feature Selection - Please select your feature groups:", list(FEATURE_GROUPS.keys()))
     if not chosen:
         st.warning("Select at least one group to proceed.")
         return
@@ -2366,7 +2430,12 @@ def clustering_page(data):
     for g in chosen:
         cols += FEATURE_GROUPS[g]
     cols = list(dict.fromkeys(cols))
-    st.write(f"{len(cols)} features selected.")
+    # st.write(f"{len(cols)} features selected.")
+
+    st.markdown(
+        f"""<p>{'<span style="color:#FFC107;"><u>'+str(len(cols))+'</u></span>'} features are selected.</p>""",
+        unsafe_allow_html=True
+    )
     if len(cols) < 2:
         st.error("Pick at least two features.")
         return
@@ -2375,6 +2444,8 @@ def clustering_page(data):
     if st.session_state.get("last_cols") != cols:
         for k in ("labels", "Xs", "rf_multi", "scaler"): st.session_state.pop(k, None)
         st.session_state["last_cols"] = cols
+    
+    st.markdown("<br>",unsafe_allow_html=True)
 
     # cluster when clicked
     # Note: we attach on_click so that after clicking, cluster_expanded=True
@@ -2383,7 +2454,7 @@ def clustering_page(data):
         on_click=_expand_cluster
     )
     if run:
-        with st.spinner("Clustering…"):
+        with st.spinner("Clustering Customers…"):
             scaler, Xs = get_scaled(data, cols)
             labels = get_labels(Xs)
             rf_multi = get_multi_surrogate(Xs, labels, 500)
@@ -2435,93 +2506,107 @@ def clustering_page(data):
         has_outliers = -1 in unique
         num_clusters = len(unique) - (1 if has_outliers else 0)
 
+        st.markdown("<hr>", unsafe_allow_html=True)
+
         # build your message
         if has_outliers:
-            msg = f"There are {num_clusters} customer groups (plus an outliers group)."
+            msg = f"There are <span style='color: #FFC107;'><u>{num_clusters} customer groups</u></span> (and <span style='color:#FFC107;'><u>an outliers group</u></span>)."
         else:
-            msg = f"There are {num_clusters} customer groups."
-        st.header(msg)
+            msg = f"There are <span style='color:#FFC107;'><u>{num_clusters} customer groups</u></span>."
+
+        st.markdown(f"<h2>{msg}</h2>", unsafe_allow_html=True)
+        # if has_outliers:
+        #     msg = f"There are {num_clusters} customer groups (plus an outliers group)."
+        # else:
+        #     msg = f"There are {num_clusters} customer groups."
+        # st.header(msg)
+
+        st.markdown("<br></br>", unsafe_allow_html=True)
+
+        with st.expander("🔍 Click Here to See More Visualizations Below!"):
 
 
-        clustered = data.assign(Cluster=st.session_state["labels"])
-        selected_cols=cols
-        
-        # ─────────────────────────────────────────────────────────────────
-        # 1) show feature descriptions & examples
-        # st.markdown("---")
-        # show_example_table(clustered, selected_cols)
-        
-        # 2) violin plots
-        st.markdown("---")
-        top_features = plot_violin_top_features_raw(clustered, selected_cols, top_n=3)
-        
-        # 3) 3D scatter
-        plot_3d_clusters_raw(clustered, selected_cols, top_features)
-        
-        # 4) cluster means table
-        st.markdown("---")
-        show_cluster_feature_means_raw(clustered, selected_cols)
-        
-        # 5) tree-based importance
-        st.markdown("---")
-        # note: if you trained one RF per cluster in rf_dict, pick rf_dict[cl] in the plotting fn
-        plot_tree_feature_importance(
-            clustered,
-            st.session_state["scaler"].transform(clustered[selected_cols]),
-            selected_cols
-        )
-        
-        # 6) LIME explainer in an expander
-        st.markdown("---")
-        with st.expander("Try enter a new customer to see which group does he/she belong!", expanded=st.session_state.cluster_expanded):
+            clustered = data.assign(Cluster=st.session_state["labels"])
+            selected_cols=cols
+            
+            # ─────────────────────────────────────────────────────────────────
+            # 1) show feature descriptions & examples
+            # st.markdown("---")
+            # show_example_table(clustered, selected_cols)
+            
+            # 2) violin plots
             st.markdown("---")
-            show_example_table(clustered, selected_cols)
-
-            show_lime_explanation_custom(
-                st.session_state["rf_multi"],
-                st.session_state["scaler"],
+            top_features = plot_violin_top_features_raw(clustered, selected_cols, top_n=3)
+            
+            # 3) 3D scatter
+            plot_3d_clusters_raw(clustered, selected_cols, top_features)
+            
+            # 4) cluster means table
+            st.markdown("---")
+            show_cluster_feature_means_raw(clustered, selected_cols)
+            
+            # 5) tree-based importance
+            st.markdown("---")
+            # note: if you trained one RF per cluster in rf_dict, pick rf_dict[cl] in the plotting fn
+            plot_tree_feature_importance(
                 clustered,
-                cols,
-                top_n=5
+                st.session_state["scaler"].transform(clustered[selected_cols]),
+                selected_cols
             )
-                
+            
+            # 6) LIME explainer in an expander
+            st.markdown("---")
+            with st.expander("Try enter a new customer to see which group does he/she belong!", expanded=st.session_state.cluster_expanded):
+                st.markdown("---")
+                show_example_table(clustered, selected_cols)
 
-            # show_lime_explanation_custom(
-            #     # if you kept my rf_dict, you’ll need to pluck the right cluster’s RF:
-            #     # st.session_state["rf_dict"][1],
-            #     st.session_state["rf_multi"],
-            #     st.session_state["scaler"],
-            #     clustered,
-            #     selected_cols,
-            #     top_n=5
-            # )
+                show_lime_explanation_custom(
+                    st.session_state["rf_multi"],
+                    st.session_state["scaler"],
+                    clustered,
+                    cols,
+                    top_n=5
+                )
+                    
 
-    # 8) Once done, show results
-    # if st.session_state.get("clustering_done"):
-    #     clustered = data.assign(Cluster=st.session_state["cluster_labels"])
-    #     st.markdown("---")
-    #     show_example_table(clustered, selected_cols)
-    #     st.markdown("---")
-    #     top_features = plot_violin_top_features_raw(clustered, selected_cols, top_n=3)
-    #     plot_3d_clusters_raw(clustered, selected_cols, top_features)
-    #     st.markdown("---")
-    #     show_cluster_feature_means_raw(clustered, selected_cols)
-    #     st.markdown("---")
-    #     plot_tree_feature_importance(clustered, scaler.transform(clustered[selected_cols]), selected_cols)
-    #     st.markdown("---")
-    #     with st.expander("Try enter a new customer and see which customer group he/she belongs"):
-    #         show_lime_explanation_custom(
-    #             st.session_state["rf_model"],
-    #             st.session_state["scaler"],
-    #             clustered,
-    #             selected_cols,
-    #             top_n=5
-    #         )
+                # show_lime_explanation_custom(
+                #     # if you kept my rf_dict, you’ll need to pluck the right cluster’s RF:
+                #     # st.session_state["rf_dict"][1],
+                #     st.session_state["rf_multi"],
+                #     st.session_state["scaler"],
+                #     clustered,
+                #     selected_cols,
+                #     top_n=5
+                # )
+
+        # 8) Once done, show results
+        # if st.session_state.get("clustering_done"):
+        #     clustered = data.assign(Cluster=st.session_state["cluster_labels"])
+        #     st.markdown("---")
+        #     show_example_table(clustered, selected_cols)
+        #     st.markdown("---")
+        #     top_features = plot_violin_top_features_raw(clustered, selected_cols, top_n=3)
+        #     plot_3d_clusters_raw(clustered, selected_cols, top_features)
+        #     st.markdown("---")
+        #     show_cluster_feature_means_raw(clustered, selected_cols)
+        #     st.markdown("---")
+        #     plot_tree_feature_importance(clustered, scaler.transform(clustered[selected_cols]), selected_cols)
+        #     st.markdown("---")
+        #     with st.expander("Try enter a new customer and see which customer group he/she belongs"):
+        #         show_lime_explanation_custom(
+        #             st.session_state["rf_model"],
+        #             st.session_state["scaler"],
+        #             clustered,
+        #             selected_cols,
+        #             top_n=5
+        #         )
 
 # Showing the data overview & export page
 def overview_page(data, preprocessed):
     
-    st.header("Data Overview & Export")
+    st.markdown("<h1 style='color:#8F67FF;'>Data Overview & Export</h1>",unsafe_allow_html=True)
+
+    # st.header("Data Overview & Export")
     st.markdown("---")
     # st.write("This page lets you download the dataset used for this app, either the original “raWWWw” dataset or the cleaned & feature-engineered version.")
         
@@ -2532,15 +2617,22 @@ def overview_page(data, preprocessed):
         # ————— Way 2: Brief narrative description —————
     st.write("This page lets you download the dataset used for this app, either the original “raw” dataset or the cleaned & feature-engineered version.") 
     st.markdown(
-        """
-        This dataset collected the results of a Portuguese bank’s telemarketing campaign between May 2008 and November 2010, it is later shared to the UCI ML repository and it can be accessed here. **[(Link)](https://archive.ics.uci.edu/dataset/222/bank+marketing)** 
+        f"""
+        <p>
+        This dataset collected the results of a Portuguese bank’s telemarketing campaign between May 2008 and November 2010, it is later shared to the UCI ML repository and it can be accessed here. <strong><a href="https://archive.ics.uci.edu/dataset/222/bank+marketing">(Link)</a></strong>
+        </p>
 
+        <p>
+        It has a classification objective by aiming to predict whether a client will subscribe to a term deposit based on:
+        </p>
 
-        It has a clssification objective by aiming to predict whether a client will subscribe to a term deposit based on:  
-        - Demographics (age, job, marital status, etc.)  
-        - Past campaign interactions (call duration, number of contacts)  
-        - Economic indicators (balance, housing/loan status)
-        """
+        <ul>
+            <li><span style="color: #00BCD4;">Demographics</span> (age, job, marital status, etc.)</li>
+            <li><span style="color: #00BCD4;">Past campaign interactions</span> (call duration, number of contacts)</li>
+            <li><span style="color: #00BCD4;">Economic indicators</span> (balance, housing/loan status)</li>
+        </ul>
+        """,
+        unsafe_allow_html=True
     )
 
     st.markdown("---")
@@ -2551,7 +2643,8 @@ def overview_page(data, preprocessed):
     st.markdown("---")
 
     # ————— Way 4: Interactive data preview & filtering —————
-    st.subheader("Data Preview")
+    st.markdown("<h2 style='color:#00BCD4;'>Data Preview</h2>",unsafe_allow_html=True)
+    # st.subheader("Data Preview")
     cols_to_show = st.multiselect(
         "Pick columns to preview:",
         options=preprocessed.columns.tolist(),
@@ -2561,9 +2654,9 @@ def overview_page(data, preprocessed):
         st.dataframe(preprocessed[cols_to_show].head(10), use_container_width=True)
     st.markdown("---")
 
-
-    st.subheader("Data Export")
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#00BCD4;'>Data Export</h2>",unsafe_allow_html=True)
+    # st.subheader("Data Export")
+    # st.markdown("<br>", unsafe_allow_html=True)
     # 2 box with a divider separating them
     col1, col_div, col2 = st.columns([1, 0.02, 1])
 
@@ -2575,7 +2668,12 @@ def overview_page(data, preprocessed):
     # ─── Raw Data ──────────────────────────────────────────────
     with col1:
         st.subheader("Raw Data")
-        st.markdown(f"- Rows **(Number of Entries):** {data.shape[0]:,}  \n- Columns **(Number of Features):** {data.shape[1]:,}")
+        # st.markdown(f"- Rows **(Number of Entries):** <u>{data.shape[0]:,}</u>  \n- Columns **(Number of Features):** <u>{data.shape[1]:,}</u>", unsafe_allow_html=True)
+        st.markdown(
+            f"- Rows **(Number of Entries):** <span style='color:#00BCD4;'><u>{data.shape[0]:,}</u></span>  \n"
+            f"- Columns **(Number of Features):** <span style='color:#00BCD4;'><u>{data.shape[1]:,}</u></span>",
+            unsafe_allow_html=True
+        )
         csv_bytes = get_csv_bytes(data)
         st.download_button("Download CSV 📥", csv_bytes, "raw_data.csv", "text/csv")
         xlsx_buf   = get_excel_buffer(data)
@@ -2600,7 +2698,12 @@ def overview_page(data, preprocessed):
     # ─── Preprocessed Data ─────────────────────────────────────
     with col2:
         st.subheader("Processed Data")
-        st.markdown(f"- Rows **(Number of Entries):** {preprocessed.shape[0]:,}  \n- Columns **(Number of Features):** {preprocessed.shape[1]:,} **(+15)**")
+        st.markdown(
+            f"- Rows **(Number of Entries):** <span style='color:#00BCD4;'><u>{preprocessed.shape[0]:,}</u></span>  \n"
+            f"- Columns **(Number of Features):** <span style='color:#00BCD4;'><u>{preprocessed.shape[1]:,}</u></span> (+15)",
+            unsafe_allow_html=True
+        )
+        # st.markdown(f"- Rows **(Number of Entries):** <u>{preprocessed.shape[0]:,}</u>  \n- Columns **(Number of Features):** <u>{preprocessed.shape[1]:,} **(+15)**</u>", unsafe_allow_html=True)
         csv2 = get_csv_bytes(preprocessed)
         xlsx2 = get_excel_buffer(preprocessed)
         st.download_button("Download CSV 📥", csv2, "Preprocessed_Data.csv", "text/csv")
@@ -2611,18 +2714,24 @@ def overview_page(data, preprocessed):
 def acknowledgement_page(data):
 
     # display text
-    st.header("Acknowledgements")
+    # st.header("Acknowledgements")
+    st.markdown("<h1 style='color:#8F67FF;'>Acknowledgements</h1>",unsafe_allow_html=True)
     st.markdown("---")
+
+    #FFC107
+    # <span style='color: #FFC107;'><u>{num_clusters} customer groups</u></span>
+
+
     ack_html = """
-    First of all, this entire application comes from a graduate data science course project where my teammates **Zheng En Than** and **Emily Au**. We cleaned the collected data, 
+    First of all, this entire application comes from a graduate data science course project where my teammates <span style='color: #FFC107;'>**Zheng En Than**</span> and <span style='color: #FFC107;'>**Emily Au**</span>. We cleaned the collected data, 
     performed exploratory data analysis, developed the machine learning models, and wrote a scientific report together. I sincerely thank them for their effort and hard work. 
-    I would also like to thank my course instructor **Dr. Jay Newby** for his guidance and mentorship.
+    I would also like to thank my course instructor <span style='color: #FFC107;'>**Dr. Jay Newby**</span> for his guidance and mentorship.
     <br><br>
     This app is made with the purpose of applying our research on a high level. If you are interested to learn more about the scientific details of our work, please visit the <a href="https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project" target="_blank"><strong>User Guide</strong></a>!
     <br><br>
-    Additionally, I want to acknowledge **Sérgio Moro**, **P. Cortez**, and **P. Rita** for sharing the UCI ML Bank Telemarketing Dataset, which is the fundamental backbone of this project.
+    Additionally, I want to acknowledge <span style='color: #FFC107;'>**Sérgio Moro**</span>, <span style='color: #FFC107;'>**P. Cortez**</span>, and <span style='color: #FFC107;'>**P. Rita**</span> for sharing the UCI ML Bank Telemarketing Dataset, which is the fundamental backbone of this project.
     <br><br>
-    Last but not least, shout out to the user test group (Steven Ge, TBA). Their opinions and feedback on this project should be recognized.
+    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>Steven Ge</span>, TBA). Their opinions and feedback on this project should be recognized.
 
     """
     st.markdown(ack_html, unsafe_allow_html=True)
