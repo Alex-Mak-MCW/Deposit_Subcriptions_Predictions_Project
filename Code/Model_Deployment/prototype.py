@@ -1207,7 +1207,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     </div>
     """.format(inner=lime_html)
 
-    components.html(wrapper, height=300)
+    components.html(wrapper, height=200)
     # components.html(lime_exp.as_html(), height=350)
 
     # ─── SHAP force plot for P(Yes) ───
@@ -1359,7 +1359,11 @@ def make_prediction(model, user_input):
 # Takes user input for decisiion tree model
 def user_input_form_decision_tree():
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader('"A Tree-based Model that Makes Decisions by Splitting Data Repeatedly on Feature Values"')
+    # st.subheader('"A Tree-based Model that Makes Decisions by Splitting Data Repeatedly on Feature Values"')
+    st.markdown(
+        '<h3 style="color:#FFC107;">"A Tree-based Model that Makes Decisions by <u>Splitting Data Repeatedly on Feature Values</u>"</h3>',
+        unsafe_allow_html=True
+    )
 
     # 1) Build the pros/cons table
     dt_pros_cons_df = pd.DataFrame({
@@ -1461,7 +1465,11 @@ def user_input_form_decision_tree():
 def user_input_form_random_forest():
     
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader('"Combining many Decision Trees and their Predictions into 1 Outcome"')
+    # st.subheader('"Combining many Decision Trees and their Predictions into 1 Outcome"')
+    st.markdown(
+        '<h3 style="color:#FFC107;">"<u>Combining many Decision Trees</u> and their Predictions into 1 Overall Outcome""</h3>',
+        unsafe_allow_html=True
+    )
 
     # 1) Build the pros/cons table
     rf_pros_cons_df = pd.DataFrame({
@@ -1570,7 +1578,11 @@ def user_input_form_random_forest():
 def user_input_form_xgboost():
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader('"An Intelligent Tree that Learns from its 100 Ancestors to Make Educated Decisions."')
+    # st.subheader('"An Intelligent Tree that Learns from its 100 Ancestors to Make Educated Decisions."')
+    st.markdown(
+        '<h3 style="color:#FFC107;">"An Intelligent Tree that <u>Learns from its 100 Ancestors</u> to Make Educated Decisions."</h3>',
+        unsafe_allow_html=True
+    )
 
     # 1) Build the pros/cons table
     xgb_pros_cons_df = pd.DataFrame({
@@ -1912,11 +1924,11 @@ def prediction_page(models, data):
     # introduction
     # st.header("Predicting Term Deposit Subscription")
     st.markdown(
-            "<h1 style='color:#8F67FF;'>Predicting Term Deposit Subscription</h1>",
-            unsafe_allow_html=True
-        )
-    st.markdown("---")
-    st.subheader("Choose an AI/ML Model below to Make Your Predictions!")
+        "<h1 style='color:#8F67FF;'>Predicting Term Deposit Subscription<span style='color:white;'> - Choose an AI/ML Model below!</span></h1>",
+        unsafe_allow_html=True
+    )
+    # st.markdown("---")
+    # st.subheader("Choose an AI/ML Model below!")
 
     # 0) build full_feature_list once
     full_feature_list = [c for c in data.columns if c != "y"]
@@ -1980,6 +1992,10 @@ def dashboard_page(data):
         margin-bottom: -2rem;         /* remove extra gap below */
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         text-align: center;
+        }
+        .kpi-card [data-testid="stPlotlyChart"] {
+        padding: 0 !important;
+        margin: 0 !important;
         }
         /* If you use Plotly inside the card, make its paper transparent */
         .kpi-card .js-plotly-plot .plotly {
@@ -2064,7 +2080,15 @@ def dashboard_page(data):
     # st.markdown("---")
     # # st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
     # persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
-    st.markdown("---")
+    # st.markdown("---")
+    st.markdown('<br>', unsafe_allow_html=True)
+    # st.markdown(
+    #     """
+    #     <div style="border-top: 1px solid white; margin: 0; padding: 0;"></div>
+    #     """,
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown('<br>', unsafe_allow_html=True)
 
     # sub function: visually shows KPIs
     def kpi_indicator(label, value, suffix="", color="#000000"):
@@ -2079,13 +2103,40 @@ def dashboard_page(data):
                 "font": {"size": 48, "color": color},     # number in your colour
                 "suffix": suffix
             },
-            domain={"x": [0.2,0.7], "y": [0,1]}
+            domain={"x": [0.3,0.6], "y": [0.3,0.4]}
         ))
         fig.update_layout(
             paper_bgcolor="rgba(0,0,0,0)",  
             plot_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=0, r=0, t=0, b=0),
-            height=140
+            height=90
+        )
+        return fig
+
+    def kpi_indicator_text(label, text_value, color="#000000"):
+        fig = go.Figure()
+
+        # Add title
+        fig.add_annotation(
+            text=f"<span style='color:white;font-size:20px'>{label}</span>",
+            x=0.5, y=1.075, xref="paper", yref="paper",
+            showarrow=False
+        )
+
+        # Add text value (centered)
+        fig.add_annotation(
+            text=f"<span style='color:{color};font-size:48px'>{text_value}</span>",
+            x=0.475, y=0.75, xref="paper", yref="paper",
+            showarrow=False
+        )
+
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=0, r=0, t=0, b=0),
+            height=90,
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False)
         )
         return fig
 
@@ -2093,24 +2144,26 @@ def dashboard_page(data):
 
     k1, k2, k3, k4, k5 = st.columns(5, gap="small")
 
-    CARD_START = '<div class="kpi-card" style="background:#fff;border-radius:12px;padding:1rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin:1rem 0;">'
-    CARD_END   = '</div>'
+    # CARD_START = '<div class="kpi-card" style="background:#fff;border-radius:12px;padding:1rem;box-shadow:0 4px 12px rgba(0,0,0,0.15);margin:1rem 0;">'
+    # CARD_END   = '</div>'
 
     # Col 1: persona selector + metric
     with k1:
-        # st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
+        st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
         # persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
         # st.metric("Most Important Factor:", "Call Duration")
-        st.markdown("""
-            <style>
-            [data-testid="stMetricValue"] {
-                color: #f83464;
-                font-size: 2.5rem;      /* increase value font size */
-            }
-            """, unsafe_allow_html=True)
+        # st.markdown("""
+        #     <style>
+        #     [data-testid="stMetricValue"] {
+        #         color: #f83464;
+        #         font-size: 2.5rem;      /* increase value font size */
+        #     }
+        #     """, unsafe_allow_html=True)
+        # st.metric("Most Important Factor:", "Call Duration")
+        fig = kpi_indicator_text("Most Important Factor:", "Call Duration", color="#f83464")
+        st.plotly_chart(fig, use_container_width=True)
 
-        st.metric("Most Important Factor:", "Call Duration")
-        # st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Col 2: Conversion Rate
     with k2:
@@ -2162,7 +2215,15 @@ def dashboard_page(data):
         st.markdown('</div>', unsafe_allow_html=True)
 
     # st.markdown("---")
-    st.markdown('<hr>', unsafe_allow_html=True)
+    # st.markdown('<hr>', unsafe_allow_html=True)
+    # st.markdown('<br>', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style="border-top: 1px solid white; margin: 0; padding: 0;"></div>
+        """,
+        unsafe_allow_html=True
+    )
+    # st.markdown('<br>', unsafe_allow_html=True)
 
     # different display outpuet for each persona
     if persona =="Marketing Manager":
@@ -2557,7 +2618,7 @@ def clustering_page(data):
             # 6) LIME explainer in an expander
             st.markdown("---")
             with st.expander("Try enter a new customer to see which group does he/she belong!", expanded=st.session_state.cluster_expanded):
-                st.markdown("---")
+                # st.markdown("---")
                 show_example_table(clustered, selected_cols)
 
                 show_lime_explanation_custom(
