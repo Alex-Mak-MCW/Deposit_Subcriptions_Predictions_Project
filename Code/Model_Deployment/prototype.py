@@ -578,9 +578,6 @@ def get_multi_surrogate(Xs: np.ndarray, labels: np.ndarray, max_samples: 50):
     return rf_small
 
 
-
-
-
 # Function to perform HDBScan clustering algorithm
 def auto_hdbscan(X, min_size=10):
     """HDBSCAN clusters automatically—no k needed (noise = -1)."""
@@ -591,7 +588,7 @@ def show_example_table(data, selected_cols):
 
     st.subheader("Feature Descriptions & Examples:")
     # st.markdown(
-    #     f"""<h2>{'<span style="color:#8F67FF;">Feature Descriptions & Examples:</span>'}</h2>""",
+    #     f"""<h2>{'<span style="color:#9966FF;">Feature Descriptions & Examples:</span>'}</h2>""",
     #     unsafe_allow_html=True
     # )
 
@@ -697,7 +694,7 @@ def show_cluster_feature_means_raw(data, selected_cols):
 
     # ─── Cluster Means & Δ-Means Tables ───────────────────────────────
     st.markdown(
-        f"""<h2>{'<span style="color:#8F67FF;">Cluster Feature Means Table</span>'}</h2>""",
+        f"""<h2>{'<span style="color:#9966FF;">Cluster Feature Means Table</span>'}</h2>""",
         unsafe_allow_html=True
     )
     st.subheader("For Regular Means:")
@@ -749,7 +746,7 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
     cluster_means = data.groupby("Cluster")[selected_cols].mean()
     top_feats = cluster_means.var().sort_values(ascending=False).index[:top_n].tolist()
 
-    # Codebase for printing the violin plots
+    # Codebase for printing the violin plots (kept incase if we are going back)
 
     # # 2) Build a label mapping: -1 → Noise, else → Cluster {i}
     # unique_idxs = sorted(data["Cluster"].unique())
@@ -783,7 +780,7 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
 # Function that plots Tree-Based Importance to show importance of each factor
 def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
     st.markdown(
-        f"""<h2>{'<span style="color:#8F67FF;">Important Factors That Formed the Customer Groups (& Outliers)</span>'}</h2>""",
+        f"""<h2>{'<span style="color:#9966FF;">Important Factors That Formed the Customer Groups (& Outliers)</span>'}</h2>""",
         unsafe_allow_html=True
     )
     # st.header("Important Factors That Formed the Customer Groups (& Outliers)")
@@ -1013,21 +1010,9 @@ def show_lime_explanation_custom(
         msg = f"Predicted Outcome: <span style='color: #FFC107;'><u>{label_map[pred_label]}</u></span>, (probability= <span style='color:#FFC107;'><u>{rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.0f}%</u></span>)"
 
         st.markdown(f"<h2>{msg}</h2>", unsafe_allow_html=True)
-
-        # st.markdown(
-        #     f"""<h2>Predicted Outcome <span style="color:#FFC107;">{label_map[pred_label]}</span> (prob=
-        #     <span style='color:#FFC107 !important;'>{rf_model.predict_proba(scaled_pt)[0][pred_index]:.2f}%</span>
-        #     </h2>""",
-        #     unsafe_allow_html=True
-        # )
-        # st.markdown(
-        #     f"""<h2><strong>Predicted Outcome:</strong> 
-        #     <span style='color:#FFC107 !important;'>{label_map[pred_label]}</span> 
-        #     (prob=<span style='color:#FFC107 !important;'>{rf_model.predict_proba(scaled_pt)[0][pred_index]:.2f}%</span>)</h2>""",
-        #     unsafe_allow_html=True
-        # )
         st.markdown("---")
 
+    # if insist to display XAI for customer segmentation
     # # # 5) Prepare a small sample for LIME (cap at 200 rows)
     # sample = data[selected_cols].values
     # if len(sample) > 50:
@@ -1072,7 +1057,7 @@ def show_lime_explanation_custom(
 # Function that plots 3D Scatter on Raw
 def plot_3d_clusters_raw(data, selected_cols, top_features):
     st.markdown(
-        f"""<h2>{'<span style="color:#8F67FF;">3D Cluster Visualization</span>'}</h2>""",
+        f"""<h2>{'<span style="color:#9966FF;">3D Cluster Visualization</span>'}</h2>""",
         unsafe_allow_html=True
     )
     # st.header("3D Cluster Visualization")
@@ -1121,16 +1106,7 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
 # XAI-related Functions
 #-----------------------------------------------
 #-----------------------------------------------
-# @st.cache(allow_output_mutation=True)
 @st.cache_data
-# @st.cache(
-#     allow_output_mutation=True,
-#     hash_funcs={
-#         pd.DataFrame: lambda _: None,  # DataFrame unhashable → ignore it
-#         dict:        lambda _: None,   # same for dict/list
-#         bytearray:   lambda _: None,
-#     }
-# )
 
 # Function that load XAI (LIME & SHAP) explainers
 @st.cache_resource
@@ -1243,7 +1219,6 @@ def get_excel_buffer(df: pd.DataFrame) -> io.BytesIO:
     df.to_excel(buf, index=False, sheet_name="sheet", engine="openpyxl")
     buf.seek(0)
     return buf
-
 
 
 
@@ -1818,9 +1793,42 @@ def home_page(models, data, raw_data):
     # )
     # st.header("Welcome to Fin-ML Studio!")
     st.markdown(
-        "<h1 style='color:#8F67FF;'>Welcome to FinML Studio!</h1>",
+        "<h1 style='color:#9966FF;'>Welcome to FinML Studio!</h1>",
         unsafe_allow_html=True
     )
+    # st.markdown(
+    #     "<h1 style='color:#9966FF;'>Header!</h1>",
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown(
+    #     "<h1 style='color:#A569FF;'>Header!</h1>",
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown(
+    #     "<h1 style='color:#BA55FF;'>Header!</h1>",
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown(
+    #     "<h1 style='color:#9966FF;'>Header!</h1>",
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown(
+    #     "<h1 style='color:#BF00FF;'>Header!</h1>",
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown(
+    #     "<h1 style='color:#AD33FF;'>Header!</h1>",
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown(
+    #     "<h1 style='color:#00BCD4;'>Body!</h1>",
+    #     unsafe_allow_html=True
+    # )
+    # st.markdown(
+    #     "<h1 style='color:#FFC107;'>Body!</h1>",
+    #     unsafe_allow_html=True
+    # )
+
     st.markdown("---")
 
 
@@ -1924,7 +1932,7 @@ def prediction_page(models, data):
     # introduction
     # st.header("Predicting Term Deposit Subscription")
     st.markdown(
-        "<h1 style='color:#8F67FF;'>Predicting Term Deposit Subscription<span style='color:white;'> - Choose an AI/ML Model below!</span></h1>",
+        "<h1 style='color:#9966FF;'>Predicting Term Deposit Subscription<span style='color:white;'> - Choose an AI/ML Model below!</span></h1>",
         unsafe_allow_html=True
     )
     # st.markdown("---")
@@ -2064,7 +2072,7 @@ def dashboard_page(data):
 
     with col1:
         st.markdown(
-            "<h1 style='color:#8F67FF; margin-bottom:0;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
+            "<h1 style='color:#9966FF; margin-bottom:0;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
             unsafe_allow_html=True
         )
 
@@ -2074,7 +2082,7 @@ def dashboard_page(data):
             ["Salesperson", "Marketing Manager"]
         )
     # st.markdown(
-    #     "<h1 style='color:#8F67FF;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
+    #     "<h1 style='color:#9966FF;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
     #     unsafe_allow_html=True
     # )
     # st.markdown("---")
@@ -2432,7 +2440,7 @@ def dashboard_page(data):
 # Displays clustering page
 def clustering_page(data): 
     st.markdown(
-                "<h1 style='color:#8F67FF;'>Customer Segmentation</h1>",
+                "<h1 style='color:#9966FF;'>Customer Segmentation</h1>",
                 unsafe_allow_html=True
             )
     # st.header("Customer Segmentation")
@@ -2531,29 +2539,6 @@ def clustering_page(data):
 
     # display results
     if "labels" in st.session_state:
-        # labels = st.session_state.labels
-        # data2 = data.assign(Cluster=labels)
-        # # cluster means
-        # means = data2.groupby("Cluster")[cols].mean()
-        # st.subheader("Cluster Means")
-        # st.dataframe(means)
-        # # delta
-        # delta = means.subtract(data[cols].mean())
-        # st.subheader("Δ from Overall Mean")
-        # st.dataframe(delta)
-
-        # # feature importances
-        # rf_dict = st.session_state.rf_dict
-        # tabs = st.tabs([f"Outliers" if c==-1 else f"Group {c+1}" for c in rf_dict.keys()])
-        # for tab, cl in zip(tabs, rf_dict.keys()):
-        #     with tab:
-        #         rf = rf_dict[cl]
-        #         imps = pd.Series(rf.feature_importances_, index=cols).nlargest(5)
-        #         fig, ax = plt.subplots()
-        #         imps.plot.bar(ax=ax)
-        #         st.pyplot(fig)
-        # reconstruct clustered DataFrame
-
         scaler   = st.session_state.scaler
         labels   = st.session_state.labels
         rf_multi = st.session_state.rf_multi
@@ -2640,32 +2625,11 @@ def clustering_page(data):
                 #     top_n=5
                 # )
 
-        # 8) Once done, show results
-        # if st.session_state.get("clustering_done"):
-        #     clustered = data.assign(Cluster=st.session_state["cluster_labels"])
-        #     st.markdown("---")
-        #     show_example_table(clustered, selected_cols)
-        #     st.markdown("---")
-        #     top_features = plot_violin_top_features_raw(clustered, selected_cols, top_n=3)
-        #     plot_3d_clusters_raw(clustered, selected_cols, top_features)
-        #     st.markdown("---")
-        #     show_cluster_feature_means_raw(clustered, selected_cols)
-        #     st.markdown("---")
-        #     plot_tree_feature_importance(clustered, scaler.transform(clustered[selected_cols]), selected_cols)
-        #     st.markdown("---")
-        #     with st.expander("Try enter a new customer and see which customer group he/she belongs"):
-        #         show_lime_explanation_custom(
-        #             st.session_state["rf_model"],
-        #             st.session_state["scaler"],
-        #             clustered,
-        #             selected_cols,
-        #             top_n=5
-        #         )
 
 # Showing the data overview & export page
 def overview_page(data, preprocessed):
     
-    st.markdown("<h1 style='color:#8F67FF;'>Data Overview & Export</h1>",unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#9966FF;'>Data Overview & Export</h1>",unsafe_allow_html=True)
 
     # st.header("Data Overview & Export")
     st.markdown("---")
@@ -2776,7 +2740,7 @@ def acknowledgement_page(data):
 
     # display text
     # st.header("Acknowledgements")
-    st.markdown("<h1 style='color:#8F67FF;'>Acknowledgements</h1>",unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#9966FF;'>Acknowledgements</h1>",unsafe_allow_html=True)
     st.markdown("---")
 
     #FFC107
@@ -2792,7 +2756,7 @@ def acknowledgement_page(data):
     <br><br>
     Additionally, I want to acknowledge <span style='color: #FFC107;'>**Sérgio Moro**</span>, <span style='color: #FFC107;'>**P. Cortez**</span>, and <span style='color: #FFC107;'>**P. Rita**</span> for sharing the UCI ML Bank Telemarketing Dataset, which is the fundamental backbone of this project.
     <br><br>
-    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>Steven Ge</span>, TBA). Their opinions and feedback on this project should be recognized.
+    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>Steven Ge, Tek Chan, Jerry Chan, David Lee, TBA</span>, TBA). Their opinions and feedback on this project should be recognized.
 
     """
     st.markdown(ack_html, unsafe_allow_html=True)
@@ -2842,7 +2806,7 @@ def main():
         # title
         # st.title("FinML Studio")
         st.markdown(
-            "<h1 style='color:#8F67FF;'>FinML Studio</h1>",
+            "<h1 style='color:#A569FF;'>FinML Studio</h1>",
             unsafe_allow_html=True
         )
 
