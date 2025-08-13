@@ -694,10 +694,10 @@ def show_cluster_feature_means_raw(data, selected_cols):
 
     # ─── Cluster Means & Δ-Means Tables ───────────────────────────────
     st.markdown(
-        f"""<h2>{'<span style="color:#9966FF;">Cluster Feature Means Table</span>'}</h2>""",
+        f"""<h2>{"<span style='color:#9966FF;'>Customer Groups' Feature Means Table</span>"}</h2>""",
         unsafe_allow_html=True
     )
-    st.subheader("For Regular Means:")
+    # st.subheader("For Regular Means:")
     cluster_means = data.groupby("Cluster")[selected_cols].mean().round(2)
     overall_mean  = data[selected_cols].mean()
     delta_means   = (cluster_means.subtract(overall_mean, axis=1)).round(2)
@@ -718,23 +718,27 @@ def show_cluster_feature_means_raw(data, selected_cols):
         new_order = [lab for lab in delta_means.index if lab != "Outliers"] + ["Outliers"]
         delta_means = delta_means.loc[new_order]
 
+    # Define which columns should be int vs float
+    int_cols = ["age", "day", "duration", "pdays", "days_in_year", "campaign", "contact_telephone"]
+    float_cols = [c for c in cluster_means.columns if c not in int_cols]
+
     styled_means = (
         cluster_means
         .style
         .background_gradient(cmap="vlag")
-        .format("{:.2f}")
+        .format({col: "{:.0f}" for col in int_cols} | {col: "{:.2f}" for col in float_cols})
     )
     st.dataframe(styled_means)
 
-    st.subheader("For Δ-means (Customer Group Mean - Overall Mean):")
-    # st.write("Δ-means (Customer Group Mean - Overall Mean):")
-    styled_delta = (
-        delta_means
-        .style
-        .background_gradient(cmap="vlag")
-        .format("{:.2f}")
-    )
-    st.dataframe(styled_delta)
+    # st.subheader("For Δ-means (Customer Group Mean - Overall Mean):")
+    # # st.write("Δ-means (Customer Group Mean - Overall Mean):")
+    # styled_delta = (
+    #     delta_means
+    #     .style
+    #     .background_gradient(cmap="vlag")
+    #     .format("{:.2f}")
+    # )
+    # st.dataframe(styled_delta)
 
 
 
@@ -811,14 +815,14 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
 
             # 3) Create a smaller figure on a light-grey background
             fig, ax = plt.subplots(
-                figsize=(6, 4.5),            # smaller width x height
+                figsize=(6, 5),            # smaller width x height
             )
             light_bg = "#f5f5f5"
             fig.patch.set_facecolor(light_bg)
             ax.set_facecolor(light_bg)
 
             # 4) Plot bars
-            bars = ax.bar(imps.index, imps.values, color="#5a9bd4", alpha=0.9)
+            bars = ax.bar(imps.index, imps.values, color="#5a9bd4", alpha=0.85)
 
             # 5) Annotate each bar
             for bar in bars:
@@ -1007,7 +1011,7 @@ def show_lime_explanation_custom(
         # st.subheader(f"Predicted Outcome: {label_map[pred_label]} "
         #         f"(probability={rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.2f}%)")
 
-        msg = f"Predicted Outcome: <span style='color: #FFC107;'><u>{label_map[pred_label]}</u></span>, (probability= <span style='color:#FFC107;'><u>{rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.0f}%</u></span>)"
+        msg = f"Predicted Outcome: <span style='color: #FFC107;'>{label_map[pred_label]}</span>, (probability= <span style='color:#FFC107;'>{rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.0f}%</span>)"
 
         st.markdown(f"<h2>{msg}</h2>", unsafe_allow_html=True)
         st.markdown("---")
@@ -1099,7 +1103,7 @@ def plot_3d_clusters_raw(data, selected_cols, top_features):
         category_orders={"Cluster_label": ordered_labels},
         color_discrete_map=color_map,
         title="3D view of Customer Groups & Outliers",
-        width=700, height=500
+        width=750, height=750
     )
     st.plotly_chart(fig3d)
 
@@ -1156,7 +1160,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
         Explains your model’s prediction by  
         <span style="color:#00BCD4;">creating a simple model just around your input</span>, showing which  
         <span style="color:#00BCD4;">features had the biggest influence</span> 
-        on the result!<br>
+        on the result.<br>
         </strong>
         """,
         unsafe_allow_html=True
@@ -1172,18 +1176,60 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     lime_html = lime_exp.as_html()
 
     # wrap it in a white box with some padding & rounded corners
-    wrapper = """
+    wrapper = f"""
     <div style="
-        background-color: white;
-        padding: 16px;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background:#cfd1d4;
+    padding:26px 28px;
+    border-radius:10px;
+    box-shadow:0 2px 12px rgba(0,0,0,.18);
     ">
-        {inner}
-    </div>
-    """.format(inner=lime_html)
+    <style>
+        /* Lay the 3 sections out in a row with equal gaps */
+        .lime {{
+        display: flex !important;
+        align-items: flex-start;
+        justify-content: flex-start;
+        gap: 192px;                     /* equal distance between the 3 blocks */
+        }}
+        .lime > table {{                 /* remove default table margins */
+        margin: 0 !important;
+        background: rgba(255,255,255,.85) !important;  /* soften white inside */
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        }}
 
-    components.html(wrapper, height=200)
+        /* Reasonable widths so the center plot has room */
+        .lime > table:nth-of-type(1) {{ flex: 0 0 260px; }}   /* probabilities */
+        .lime > table:nth-of-type(2) {{ flex: 1 1 560px; }}   /* contribution bars */
+        .lime > table:nth-of-type(3) {{ flex: 0 0 260px; }}   /* feature values  */
+
+        /* Extra breathing room between the 3 main sections (fallback if flex gaps ignored) */
+        .lime .lime-top-table {{ margin-bottom: 0 !important; }}
+        .lime .lime-table {{ margin: 0 !important; }}
+
+        /* Make middle bar plot more sparse vertically */
+        .lime > table:nth-of-type(2) td {{
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+        }}
+        .lime > table:nth-of-type(2) svg g rect {{
+        transform: translateY(6px);    /* separate bars visually */
+        }}
+
+        /* Mobile fallback: stack vertically */
+        @media (max-width: 1100px) {{
+        .lime {{ flex-direction: column; gap: 24px; }}
+        .lime > table:nth-of-type(1),
+        .lime > table:nth-of-type(2),
+        .lime > table:nth-of-type(3) {{ flex: 1 1 auto; }}
+        }}
+    </style>
+    {lime_html}
+    </div>
+    """
+    components.html(wrapper, height=250)
+
+
     # components.html(lime_exp.as_html(), height=350)
 
     # ─── SHAP force plot for P(Yes) ───
@@ -1194,7 +1240,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
         <strong>
         2. <span style="color:#FFC107;">SHAP</span> (SHapley Additive exPlanations):<br></br>
         Explains your model’s prediction by showing how much each of your inputs 
-        <span style="color:#00BCD4;">helps push the prediction higher or lower!</span>
+        <span style="color:#00BCD4;">helps push the prediction higher or lower.</span>
         </strong><br>
         """,
         unsafe_allow_html=True
@@ -1203,6 +1249,23 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
     single_exp = expl[0]          # pick the one row
     shap.initjs()
     fig = shap.plots.force(single_exp, matplotlib=True, show=False)
+    # Set figure + axes background
+    fig.patch.set_facecolor("#cfd1d4")
+    ax = plt.gca()
+    ax.set_facecolor("#cfd1d4")
+
+    # Loop through all text objects to fix the white boxes
+    for text in ax.texts:
+        bbox = text.get_bbox_patch()
+        if bbox is not None:
+            bbox.set_facecolor("#cfd1d4")  # match grey background
+            bbox.set_edgecolor("none")     # remove border
+
+    # Hide vertical lines
+    for line in ax.lines:
+        line.set_color("#cfd1d4")  # match background color
+        line.set_alpha(1)          # fully opaque to cover them
+
     st.pyplot(fig, bbox_inches="tight")
 
 # export-related functions
@@ -1932,7 +1995,7 @@ def prediction_page(models, data):
     # introduction
     # st.header("Predicting Term Deposit Subscription")
     st.markdown(
-        "<h1 style='color:#9966FF;'>Predicting Term Deposit Subscription<span style='color:white;'> - Choose an AI/ML Model below!</span></h1>",
+        "<h1 style='color:#9966FF;'>Predicting Term Deposit Subscription<span style='color:white;'> - Choose an AI/ML Model below</span></h1>",
         unsafe_allow_html=True
     )
     # st.markdown("---")
@@ -2450,8 +2513,8 @@ def clustering_page(data):
     #00BCD4
 
     # ─── 0) Setup expander state & callback ────────────────────────────
-    if "cluster_expanded" not in st.session_state:
-        st.session_state.cluster_expanded = False
+    # if "cluster_expanded" not in st.session_state: 
+    #     st.session_state.cluster_expanded = False
 
     def _expand_cluster():
         st.session_state.cluster_expanded = True
@@ -2488,7 +2551,7 @@ def clustering_page(data):
         return
 
     # show table of selections
-    sel_rows = [{"Group": g, "Desc": DESCS[g], "Example": EXS[g]} for g in chosen]
+    sel_rows = [{"Feature Group": g, "Description": DESCS[g], "Examples": EXS[g]} for g in chosen]
     # st.table(pd.DataFrame(sel_rows))
     df = pd.DataFrame(sel_rows)
     df.index = df.index + 1
@@ -2553,12 +2616,13 @@ def clustering_page(data):
         num_clusters = len(unique) - (1 if has_outliers else 0)
 
         st.markdown("<hr>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 
         # build your message
         if has_outliers:
-            msg = f"There are <span style='color: #FFC107;'><u>{num_clusters} customer groups</u></span> (and <span style='color:#FFC107;'><u>an outliers group</u></span>)."
+            msg = f"There are <span style='color: #FFC107;'>{num_clusters} customer groups</span> (and <span style='color:#FFC107;'>1 outliers group</span>)."
         else:
-            msg = f"There are <span style='color:#FFC107;'><u>{num_clusters} customer groups</u></span>."
+            msg = f"There are <span style='color:#FFC107;'>{num_clusters} customer groups</span>."
 
         st.markdown(f"<h2>{msg}</h2>", unsafe_allow_html=True)
         # if has_outliers:
@@ -2602,7 +2666,7 @@ def clustering_page(data):
             
             # 6) LIME explainer in an expander
             st.markdown("---")
-            with st.expander("Try enter a new customer to see which group does he/she belong!", expanded=st.session_state.cluster_expanded):
+            with st.expander("Try enter a new customer to see which group does he/she belong!", expanded=True):
                 # st.markdown("---")
                 show_example_table(clustered, selected_cols)
 
