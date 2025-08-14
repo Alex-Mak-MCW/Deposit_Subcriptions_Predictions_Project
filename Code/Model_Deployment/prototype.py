@@ -192,7 +192,7 @@ def monthly_success_altair(df):
     return chart
 
 # Plot pie chart for contact channel
-def contact_channel_pie(df, filter_col="y", filter_val=1):
+def contact_channel_pie(df, width, height, filter_col="y", filter_val=1):
     """
     Given a DataFrame `df`, filters for df[filter_col] == filter_val,
     then builds & returns a Plotly Pie chart of contact_cellular vs contact_telephone.
@@ -223,29 +223,49 @@ def contact_channel_pie(df, filter_col="y", filter_val=1):
     ))
     fig.update_traces(marker=dict(line=dict(width=1, color="white")))
     fig.update_layout(
-        title_text="Wins per Contact Channel (Count & Proportion in %)",
-        showlegend=False
+        title=dict(
+            text="Wins per Contact Channel ",
+            pad=dict(t=-10),  # reduce top padding
+            font=dict(size=16)
+        ),
+        margin=dict(t=40, b=0, l=0, r=0),  # shrink figure top margin
+        showlegend=False,
+        width=width,
+        height=height
     )
     return fig
 
+st.markdown(
+    """
+    <style>
+    /* Reduce space between tab headers and their content */
+    div[data-testid="stTabs"] div[role="tabpanel"] {
+        padding-top: 0.25rem;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # plot venn diagram for success cases over loan types
-def plot_loan_venn(df, filter_col="y", filter_val=1):
+def plot_loan_venn(df, width, height, filter_col="y", filter_val=1):
     # 1) Compute counts
-    wins = df[df['y']==1]
+    wins = df[df[filter_col] == filter_val]
     both     = int(((wins["housing"] == 1) & (wins["loan"] == 1)).sum())
     housing  = int(wins["housing"].sum()) - both
     personal = int(wins["loan"].sum())    - both
     no_loans = int(((wins["housing"] == 0) & (wins["loan"] == 0)).sum())
 
-    # 2) Create transparent canvas
-    fig, ax = plt.subplots(facecolor="none")
+    # 2) Create transparent canvas with custom size
+    fig, ax = plt.subplots(figsize=(width, height), facecolor="none")
     ax.set_facecolor("none")
 
     # 3) Draw the Venn
     v = venn2(
         subsets=(housing, personal, both),
         set_labels=("Housing Loan", "Personal Loan"),
-        ax=ax
+        ax=ax,
+        normalize_to=0.01
     )
 
     # 4) Color the patches
@@ -253,42 +273,49 @@ def plot_loan_venn(df, filter_col="y", filter_val=1):
     v.get_patch_by_id('01').set_color('#EF553B')
     v.get_patch_by_id('11').set_color('#00CC96')
 
-    # 5) Force **all** text to white
-    #    • Set labels ("Housing Loan", "Personal Loan")
-    # 1) Make all the venn text full‐bright white + bold
+    # 5) Set labels and subset text to white + bold
     for txt in v.set_labels:
         txt.set_color("white")
         txt.set_fontweight("bold")
         txt.set_alpha(1)
-        txt.set_fontsize(8)   # or whatever suits your layout
+        txt.set_fontsize(4)
 
     for txt in v.subset_labels:
         if txt is not None:
             txt.set_color("white")
             txt.set_fontweight("bold")
             txt.set_alpha(1)
-            txt.set_fontsize(8)
+            txt.set_fontsize(4)
 
-    # 2) Same for your annotation & title
+    # 6) Annotation for "No Loans"
     ax.text(
-        0.5, 0.5, f"No Loans: {no_loans}",
+        0.05, 0.05, f"No Loans: {no_loans}",
         ha="center", va="center",
-        fontsize=8, color="white",
+        fontsize=4, color="white",
         fontweight="bold", alpha=1
     )
+
     ax.set_title(
         "Wins per Loan Ownership",
         color="white",
         fontweight="bold",
-        fontsize=8,
-        alpha=1
+        fontsize=4,
+        alpha=1,
+        pad=0.1  # reduce space above plot
     )
 
-    # 8) Remove spines for a cleaner look
+    # 7) Remove spines
     for spine in ax.spines.values():
         spine.set_visible(False)
 
+    ax.margins(x=0.02, y=0.02)  
+
+    # plt.subplots_adjust(top=0.85)
+    # plt.subplots_adjust(top=0.75, bottom=0.02, left=0.02, right=0.98)
+    plt.subplots_adjust(top=0.75, bottom=0.05)  # top controls title gap
+
     return fig
+
 
 
 
@@ -2237,9 +2264,9 @@ def dashboard_page(data):
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Col 2: Conversion Rate
-    with k2:
+    with k2: 
         st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
-        fig = kpi_indicator("Conversion Rate", round(data['y'].mean()*100,2), "%", color="#e28743")
+        fig = kpi_indicator("Conversion Rate", round(data['y'].mean()*100,2), "%", color="#FFC107") #e28743
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2250,21 +2277,21 @@ def dashboard_page(data):
             fig = kpi_indicator(
                 "First-Time Conversion Rate",
                 round(data[data['previous']==0]['y'].mean()*100,2),
-                "%", color="#eab676"
-            )
+                "%", color="#FFC107"
+            )#eab676
         else:
             fig = kpi_indicator(
                 "Avg. Success Duation (mins)",
                 round(data[data['y']==1]['duration'].mean()/60,2),
-                "", color="#76b5c5"
-            )
+                "", color="#FFC107"
+            )#76b5c5
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     # Col 4: First Contact %
     with k4:
         st.markdown('<div class="kpi-card">', unsafe_allow_html=True)
-        fig = kpi_indicator("First Contact %", round((data['previous']==0).mean()*100,2), "%", color="#FFB6C1")
+        fig = kpi_indicator("First Contact %", round((data['previous']==0).mean()*100,2), "%", color="#FFC107")#FFB6C1
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2274,14 +2301,14 @@ def dashboard_page(data):
         if persona == 'Marketing Manager':
             fig = kpi_indicator(
                 "Avg. Balance for Success",
-                round(data[data['y']==1]['balance'].mean(),2), color="#abdbe3"
-            )
+                round(data[data['y']==1]['balance'].mean(),2), color="#FFC107"
+            )#abdbe3
         else:
             fig = kpi_indicator(
                 "Avg. Past Success Rate",
                 round(data[data['y']==1]['poutcome'].mean()*100,2),
-                "%", color="#1e81b0"
-            )
+                "%", color="#FFC107"
+            )#1e81b0
         st.plotly_chart(fig, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -2300,8 +2327,8 @@ def dashboard_page(data):
     if persona =="Marketing Manager":
 
         # --- Create our 2×2 grid ---
-        row1_col1, row1_col2 = st.columns(2, gap="medium")
-        row2_col1, row2_col2 = st.columns(2, gap="medium")
+        row1_col1, row1_col2 = st.columns([2.85, 5], gap="medium")
+        row2_col1, row2_col2 = st.columns([2.85, 5], gap="medium")
 
         # plots for a salesperson
         # 1. plot for sales overtime?
@@ -2324,12 +2351,12 @@ def dashboard_page(data):
             <div class="rec-card">
             <h3>Marketing-based Recommendations</h3>
             <ul>
-                <li>Target campaigns in March, August, November, and December. They are the peak subscription months.</li>
-                <li>Focus on customers in their thirties, they are the most responsive group.</li>
-                <li>Boost conversion by increasing call duration, this is more impactful than age.</li>
-                <li>Customers without loans are more likely to convert during shorter calls.</li>
-                <li>Since most use cellular phones, get their attention quickly and increase engagement time.</li>
-                <li>Re-engage past subscribers. Over 50% convert again when contacted.</li>
+                <li>Target campaigns in <u>March, August, November, and December</u>. </li>
+                <li>Focus on <u>customers in their 30's</u>, they are the most responsive group.</li>
+                <li>Boost conversion by <u>increasing call duration</u>, this is more impactful than age.</li>
+                <li>Customers without loans are more likely to convert in shorter calls.</li>
+                <li>Since <u>most use cellular phones</u>, get their attention quickly and increase engagement time.</li>
+                <li><u>Re-engage past subscribers</u>. Over 50% convert again when contacted.</li>
             </ul>
             </div>
             """
@@ -2360,18 +2387,18 @@ def dashboard_page(data):
         # bottom-left box: works both Sales and Marketing
         with row2_col1:
             st.markdown(
-                "<h3 style='color:#00BCD4;'>Wins by Channel & Loans</h3>",
+                "<h3 style='color:#00BCD4;'>Wins Distribution</h3>",
                 unsafe_allow_html=True
             )
             # st.subheader("Wins by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
             with contact_tab:
                 # Plot 3: contact type pie (Plotly)
-                contact_fig= contact_channel_pie(data)    
+                contact_fig= contact_channel_pie(data, 265, 265)    
                 st.plotly_chart(contact_fig, use_container_width=True)
             with loan_tab:
                 # Plot 4: loan Venn (matplotlib)
-                venn_fig = plot_loan_venn(data)
+                venn_fig = plot_loan_venn(data, 2, 2)
                 st.markdown('<div class="venn-container">', unsafe_allow_html=True)
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -2426,12 +2453,12 @@ def dashboard_page(data):
                 <div class="rec-card">
                 <h3>Sales-Based Recommendations</h3>
                 <ul>
-                    <li>Prior subscribers are highly likely to convert again, prioritize follow-ups with them.</li>
-                    <li>Focus outreach during summer or near Christmas, when conversion rates are highest.</li>
-                    <li>Don’t overlook clients with existing loans —> 40% still convert successfully.</li>
-                    <li>Duration is crucial for success —> aim for longer, value-driven conversations (at least 9 minutes).</li>
-                    <li>Most clients use mobile phones — grab their attention quickly and make every second count.</li>
-                    <li>On most days, fewer than 100 calls were made, many even below 50. Increase outreach volume to improve campaign coverage.</li>
+                    <li><u>Prior subscribers are likely to convert again</u>, prioritize follow-ups with them.</li>
+                    <li>Focus outreach during <u>summer / near Christmas</u> when conversion rates are highest.</li>
+                    <li>Don’t overlook clients with existing loans —> <u>40% still convert</u>.</li>
+                    <li><u>Duration is crucial for success</u> —> aim for longer, value-driven conversations (<u>at least 9 minutes</u>).</li>
+                    <li><u>Most clients use mobile phones</u> — grab their attention quickly & make every second count.</li>
+                    <li>Most days have <u>fewer than 50 callse</u>. Increase outreach volume to improve campaign coverage.</li>
                 </ul>
                 </div>
                 """
@@ -2467,11 +2494,11 @@ def dashboard_page(data):
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
             with contact_tab:
                 # Plot 3: contact type pie (Plotly)
-                contact_fig= contact_channel_pie(data)    
+                contact_fig= contact_channel_pie(data, 350, 350)    
                 st.plotly_chart(contact_fig, use_container_width=True)
             with loan_tab:
                 # Plot 4: loan Venn (matplotlib)
-                venn_fig = plot_loan_venn(data)
+                venn_fig = plot_loan_venn(data, 3, 3) 
                 st.markdown('<div class="venn-container">', unsafe_allow_html=True)
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -2704,9 +2731,21 @@ def overview_page(data, preprocessed):
     # st.markdown("---")
 
         # ————— Way 2: Brief narrative description —————
-    st.write("This page lets you download the dataset used for this app, either the original “raw” dataset or the cleaned & feature-engineered version.") 
+    st.write("This page lets you download the dataset used for this app, including the original “raw” dataset or the “processed” data by utilizng the following techniques:") 
+    st.markdown(
+        """
+        <ol>
+            <li>Transform null data through <span style="color: #00BCD4;">data imputation</span></li>
+            <li>Applied different <span style="color: #00BCD4;">encoding techniques</span> (label encoding and one-hot encoding) to encode different categorical features</li>
+            <li><span style="color: #00BCD4;">Outlier detection and removal</span></li>
+            <li>Create new features with <span style="color: #00BCD4;">feature engineering</span> techniques</li>
+        </ol>
+        """,
+        unsafe_allow_html=True
+    )
     st.markdown(
         f"""
+        <br>
         <p>
         This dataset collected the results of a Portuguese bank’s telemarketing campaign between May 2008 and November 2010, it is later shared to the UCI ML repository and it can be accessed here. <strong><a href="https://archive.ics.uci.edu/dataset/222/bank+marketing">(Link)</a></strong>
         </p>
@@ -2724,6 +2763,7 @@ def overview_page(data, preprocessed):
         unsafe_allow_html=True
     )
 
+
     st.markdown("---")
 
     # ————— Way 3: Feature data dictionary —————
@@ -2740,7 +2780,9 @@ def overview_page(data, preprocessed):
         default=preprocessed.columns.tolist()[:5]
     )
     if cols_to_show:
-        st.dataframe(preprocessed[cols_to_show].head(10), use_container_width=True)
+        df_to_show = preprocessed[cols_to_show].head(10).copy()
+        df_to_show.index = df_to_show.index + 1  # make it start at 1
+        st.dataframe(df_to_show, use_container_width=True)
     st.markdown("---")
 
     st.markdown("<h2 style='color:#00BCD4;'>Data Export</h2>",unsafe_allow_html=True)
