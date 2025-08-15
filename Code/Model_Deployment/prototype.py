@@ -248,73 +248,59 @@ st.markdown(
 )
 
 # plot venn diagram for success cases over loan types
-def plot_loan_venn(df, width, height, filter_col="y", filter_val=1):
-    # 1) Compute counts
+def plot_loan_venn(
+    df,
+    width_px,
+    height_px,
+    filter_col="y",
+    filter_val=1,
+    scale=0.34,
+    dpi=100,
+):
     wins = df[df[filter_col] == filter_val]
     both     = int(((wins["housing"] == 1) & (wins["loan"] == 1)).sum())
     housing  = int(wins["housing"].sum()) - both
     personal = int(wins["loan"].sum())    - both
     no_loans = int(((wins["housing"] == 0) & (wins["loan"] == 0)).sum())
 
-    # 2) Create transparent canvas with custom size
-    fig, ax = plt.subplots(figsize=(width, height), facecolor="none")
+    w_in, h_in = width_px / dpi, height_px / dpi
+    fig, ax = plt.subplots(figsize=(w_in, h_in), dpi=dpi, facecolor="none")
     ax.set_facecolor("none")
 
-    # 3) Draw the Venn
     v = venn2(
         subsets=(housing, personal, both),
         set_labels=("Housing Loan", "Personal Loan"),
         ax=ax,
-        normalize_to=0.01
+        normalize_to=scale
     )
 
-    # 4) Color the patches
     v.get_patch_by_id('10').set_color('#636EFA')
     v.get_patch_by_id('01').set_color('#EF553B')
     v.get_patch_by_id('11').set_color('#00CC96')
 
-    # 5) Set labels and subset text to white + bold
+    fscale = max(width_px, height_px) / 300.0
     for txt in v.set_labels:
-        txt.set_color("white")
-        txt.set_fontweight("bold")
-        txt.set_alpha(1)
-        txt.set_fontsize(4)
-
+        txt.set_color("white"); txt.set_fontweight("bold"); txt.set_alpha(1); txt.set_fontsize(7 * fscale)
     for txt in v.subset_labels:
         if txt is not None:
-            txt.set_color("white")
-            txt.set_fontweight("bold")
-            txt.set_alpha(1)
-            txt.set_fontsize(4)
+            txt.set_color("white"); txt.set_fontweight("bold"); txt.set_alpha(1); txt.set_fontsize(7 * fscale)
 
-    # 6) Annotation for "No Loans"
-    ax.text(
-        0.05, 0.05, f"No Loans: {no_loans}",
-        ha="center", va="center",
-        fontsize=4, color="white",
-        fontweight="bold", alpha=1
-    )
+    ax.text(0.78, 0.86, f"No Loans: {no_loans}",
+            ha="center", va="center",
+            fontsize=7 * fscale, color="white", fontweight="bold", alpha=1,
+            transform=ax.transAxes)
 
-    ax.set_title(
-        "Wins per Loan Ownership",
-        color="white",
-        fontweight="bold",
-        fontsize=4,
-        alpha=1,
-        pad=0.1  # reduce space above plot
-    )
+    ax.set_title("Wins per Loan Ownership",
+                 color="white", fontweight="bold", fontsize=8 * fscale, pad=2)
 
-    # 7) Remove spines
-    for spine in ax.spines.values():
-        spine.set_visible(False)
+    for spine in ax.spines.values(): spine.set_visible(False)
+    ax.margins(0.01, 0.01)
 
-    ax.margins(x=0.02, y=0.02)  
-
-    # plt.subplots_adjust(top=0.85)
-    # plt.subplots_adjust(top=0.75, bottom=0.02, left=0.02, right=0.98)
-    plt.subplots_adjust(top=0.75, bottom=0.05)  # top controls title gap
+    # Move the diagram UP by shrinking bottom and enlarging top margin
+    plt.subplots_adjust(left=0.00, right=0.98, top=0.92, bottom=0.00)
 
     return fig
+
 
 
 
@@ -508,54 +494,58 @@ def plot_loans_duration_heatmap(df, dur_start=0, dur_end=1200, dur_step=60):
     return chart
 
 # plot the donut chart for proportion of each previous outcome 
-def previous_donut(df, filter_col="poutcome", filter_val=1):
+def previous_donut(df, width, height, filter_col="poutcome", filter_val=1):
     """
-    Given a DataFrame `df`, filters for df[filter_col] == filter_val,
-    then builds & returns a Plotly Pie chart of contact_cellular vs contact_telephone.
+    Filters df[filter_col] == filter_val, then builds a Plotly donut chart
+    showing the proportion of Wins vs Losses (column 'y').
     """
-    # 1) Filter to “wins”
+    # 1) Filter
     wins = df[df[filter_col] == filter_val]
 
-    # 2) Count 0 vs 1 in target_col
+    # 2) Count outcomes
     counts = wins["y"].value_counts().sort_index()
     zero_ct = int(counts.get(0, 0))
     one_ct  = int(counts.get(1, 0))
 
-    # 3) Build labels & values
-    labels = ["Losses", "Wons"]
+    # 3) Donut labels/values
+    labels = ["Losses", "Wins"]
     values = [zero_ct, one_ct]
 
-    # 4) Create the donut
+    # 4) Build donut
     fig = go.Figure(go.Pie(
         labels=labels,
         values=values,
-        hole=0.4,
+        hole=0.45,
         textinfo="label+value+percent",
-        insidetextorientation="horizontal",
         textposition="inside",
+        insidetextorientation="horizontal",
         marker=dict(
-            colors=["#EF553B", "#636EFA"],   # first slice blue, second red
+            colors=["#EF553B", "#636EFA"],   # same palette as your pie
             line=dict(width=1, color="white")
         ),
-        textfont=dict(
-            color=["white", "white"],    # both slices in white
-            size=14
-        )
+        textfont=dict(color=["white", "white"], size=14)
     ))
 
-    if filter_val==0:
-        fig_title="Proportion of Campaign Wins when its Previous Campaign Fails"
-    elif filter_val==0.5:
-        fig_title="Proportion of Campaign Wins when its Previous Campaign Outcome is Inconclusive"
-    elif filter_val==1:
-        fig_title="Proportion of Campaign Wins when its Previous Campaign Succeeds"
+    # Title by filter value
+    if filter_val == 0:
+        fig_title = "Proportion of Campaign Outcome when it Failed"
+    elif filter_val == 0.5:
+        fig_title = "Proportion of Campaign Outcome when it was Inconclusive"
+    elif filter_val == 1:
+        fig_title = "Proportion of Campaign Wins when it Succeeded"
+    else:
+        fig_title = "Campaign Outcome Proportions"
 
-
+    # Styling to match your pie helper (tight top gap + fixed size)
     fig.update_traces(marker=dict(line=dict(width=1, color="white")))
     fig.update_layout(
-        title_text=fig_title,
-        showlegend=False
+        title=dict(text=fig_title, pad=dict(t=10), font=dict(size=16)),
+        margin=dict(t=40, b=0, l=0, r=0),
+        showlegend=False,
+        width=width,
+        height=height
     )
+
     return fig
 
 ## Clustering-related Functions
@@ -660,7 +650,7 @@ def show_example_table(data, selected_cols):
         "education":         "2",
         "default":           "0",
         "balance":           "10000.00",
-        "contact_cellular":  "",
+        "contact_cellular":  "0",
         "contact_telephone": "1",
         "housing":           "0",
         "loan":              "1",
@@ -842,7 +832,7 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
 
             # 3) Create a smaller figure on a light-grey background
             fig, ax = plt.subplots(
-                figsize=(6, 5),            # smaller width x height
+                figsize=(3, 3),            # smaller width x height
             )
             light_bg = "#f5f5f5"
             fig.patch.set_facecolor(light_bg)
@@ -859,17 +849,17 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
                     h,
                     f"{h:.2f}",
                     ha="center", va="bottom",
-                    fontsize=10,
+                    fontsize=5,
                     color="#333"
                 )
 
             # 6) Style axes & title with dark text
             title = ("Outliers" if cl == -1 else f"Customer Group {cl+1}")
-            ax.set_title(f"Top {top_n} Important Features for {title}", color="#333", fontsize=12)
-            ax.set_xlabel("Features", color="#333", fontsize=10)
-            ax.set_ylabel("Importance Score", color="#333", fontsize=10)
+            ax.set_title(f"Top {top_n} Important Features for {title}", color="#333", fontsize=8)
+            ax.set_xlabel("Features", color="#333", fontsize=8)
+            ax.set_ylabel("Importance Score", color="#333", fontsize=8)
             ax.tick_params(colors="#333")
-            plt.setp(ax.get_xticklabels(), rotation=45, ha="right", color="#333", fontsize=9)
+            plt.setp(ax.get_xticklabels(), rotation=45, ha="right", color="#333", fontsize=8)
 
             plt.tight_layout()
 
@@ -2022,7 +2012,7 @@ def prediction_page(models, data):
     # introduction
     # st.header("Predicting Term Deposit Subscription")
     st.markdown(
-        "<h1 style='color:#9966FF;'>Predicting Term Deposit Subscription<span style='color:white;'> - Choose an AI/ML Model below</span></h1>",
+        "<h1 style='color:#9966FF;'>Predicting Term Deposit Subscription<span style='color:white;'> - Choose an AI/ML Model Below</span></h1>",
         unsafe_allow_html=True
     )
     # st.markdown("---")
@@ -2142,7 +2132,7 @@ def dashboard_page(data):
         padding: 1rem;
         border-radius: 10px;
         margin-bottom: -10.5rem;
-        margin-top: 0rem;
+        margin-top: -0.5rem;
         }
         .rec-card h2, .rec-card li {
         color: white; 
@@ -2398,7 +2388,7 @@ def dashboard_page(data):
                 st.plotly_chart(contact_fig, use_container_width=True)
             with loan_tab:
                 # Plot 4: loan Venn (matplotlib)
-                venn_fig = plot_loan_venn(data, 2, 2)
+                venn_fig = plot_loan_venn(data, width_px=265, height_px=265, scale=0.25)
                 st.markdown('<div class="venn-container">', unsafe_allow_html=True)
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -2430,8 +2420,8 @@ def dashboard_page(data):
     elif persona =="Salesperson":
 
         # --- Create our 2×2 grid ---
-        row1_col1, row1_col2 = st.columns(2, gap="medium")
-        row2_col1, row2_col2 = st.columns(2, gap="medium")
+        row1_col1, row2_col2, row2_col1 = st.columns([1.15,1,1], gap="medium")
+        # row2_col2 = st.columns(1, gap="medium")
 
         # plots for a salesperson
         # 1. plot for sales overtime?
@@ -2464,41 +2454,23 @@ def dashboard_page(data):
                 """
 
             st.markdown(recommendations_html, unsafe_allow_html=True)
-
-
-        # Top-right box: display plots for both Sales and Marketing
-        with row1_col2:
-            st.markdown('<br>', unsafe_allow_html=True)
-            # st.markdown('<div class="box-card">', unsafe_allow_html=True)
-            st.markdown(
-                "<h3 style='color:#00BCD4;'>Marketing Campaign Trend Over Time</h3>",
-                unsafe_allow_html=True
-            )
-            # st.subheader("Marketing Campaign Trend Over Time")
-            ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
-            with ts_tab:
-                # daily number of success over time plot
-                st.altair_chart(daily_line_altair(data), use_container_width=True)
-            with ms_tab:
-                # monthly succeess rate
-                st.altair_chart(monthly_success_altair(data), use_container_width=True)
-            # st.markdown('</div>', unsafe_allow_html=True)
     
         # Bottom-left box: display plots for both Sales and Marketing
         with row2_col1:
+            st.markdown('<br>', unsafe_allow_html=True)
             st.markdown(
-                "<h3 style='color:#00BCD4;'>Campaign Outcome by Channel & Loans</h3>",
+                "<h3 style='color:#00BCD4;'>Outcome by Channel & Loans</h3>",
                 unsafe_allow_html=True
             )
             # st.subheader("Campaign Outcome by Channel & Loans")
             contact_tab, loan_tab = st.tabs(["Contact Channel","Loan Overlap"])
             with contact_tab:
                 # Plot 3: contact type pie (Plotly)
-                contact_fig= contact_channel_pie(data, 350, 350)    
+                contact_fig= contact_channel_pie(data, 300, 300)    
                 st.plotly_chart(contact_fig, use_container_width=True)
             with loan_tab:
                 # Plot 4: loan Venn (matplotlib)
-                venn_fig = plot_loan_venn(data, 3, 3) 
+                venn_fig = plot_loan_venn(data, width_px=300, height_px=300, scale=0.34) 
                 st.markdown('<div class="venn-container">', unsafe_allow_html=True)
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -2506,26 +2478,49 @@ def dashboard_page(data):
         # Bottom-right box: displays plot for both Sales and Marketing
         # Box (2,2): distributions & heatmaps (Plots 5, 6 & 7)
         with row2_col2:
+        # with st.columns(1):
+            st.markdown('<br>', unsafe_allow_html=True)
             st.markdown(
-                "<h3 style='color:#00BCD4;'>Current Campaign Outcome Based on Past Outcomes</h3>",
+                "<h3 style='color:#00BCD4;'>Outcome Based on Past Outcomes</h3>",
                 unsafe_allow_html=True
             )
             # st.subheader("Campaign Outcome Based on Past Campaign's Outcomes")
             no_past_tab, past_tab, inconclusive_tab= st.tabs([
-                "No Past Campaign","Successful Past Campaign", "Inconclusive Past Campaign"
+                "No Past","Successful Past", "Inconclusive Past"
             ])
+
+            width=300
+            height=300
 
             with no_past_tab:
                 # Plot 5: age donut for past failed scenarios
-                st.plotly_chart(previous_donut(df=data, filter_val=0), use_container_width=True)
+                st.plotly_chart(previous_donut(df=data, width=width, height=height, filter_val=0), use_container_width=True)
 
             with past_tab:
                 # Plot 6: age donut for past success scenarios
-                st.plotly_chart(previous_donut(df=data, filter_val=1), use_container_width=True)
+                st.plotly_chart(previous_donut(df=data, width=width, height=height, filter_val=1), use_container_width=True)
 
             with inconclusive_tab:
                 # Plot 7: age donut for past inconclusive scenarios
-                st.plotly_chart(previous_donut(df=data, filter_val=0.5), use_container_width=True)
+                st.plotly_chart(previous_donut(df=data, width=width, height=height, filter_val=0.5), use_container_width=True)
+
+        # Top-right box: display plots for both Sales and Marketing
+        # with row1_col2:
+        # st.markdown('<br>', unsafe_allow_html=True)
+        # st.markdown('<div class="box-card">', unsafe_allow_html=True)
+        st.markdown(
+            "<h3 style='color:#00BCD4;'>Marketing Campaign Trend Over Time</h3>",
+            unsafe_allow_html=True
+        )
+        # st.subheader("Marketing Campaign Trend Over Time")
+        ts_tab, ms_tab = st.tabs(["Daily Count","Monthly Success"])
+        with ts_tab:
+            # daily number of success over time plot
+            st.altair_chart(daily_line_altair(data), use_container_width=True)
+        with ms_tab:
+            # monthly succeess rate
+            st.altair_chart(monthly_success_altair(data), use_container_width=True)
+        # st.markdown('</div>', unsafe_allow_html=True)
 
 # Displays clustering page
 def clustering_page(data): 
@@ -2862,7 +2857,7 @@ def acknowledgement_page(data):
     <br><br>
     Additionally, I want to acknowledge <span style='color: #FFC107;'>**Sérgio Moro**</span>, <span style='color: #FFC107;'>**P. Cortez**</span>, and <span style='color: #FFC107;'>**P. Rita**</span> for sharing the UCI ML Bank Telemarketing Dataset, which is the fundamental backbone of this project.
     <br><br>
-    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>Steven Ge, Tek Chan, Jerry Chan, David Lee, TBA</span>, TBA). Their opinions and feedback on this project should be recognized.
+    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>Steven Ge, Ruike Xu, Tek Chan, Jerry Chan, David Lee, TBA</span>, TBA). Their opinions and feedback on this project should be recognized.
 
     """
     st.markdown(ack_html, unsafe_allow_html=True)
