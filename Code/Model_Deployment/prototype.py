@@ -1443,11 +1443,11 @@ def user_input_form_decision_tree():
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
 
-    st.markdown(
-        "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
-        unsafe_allow_html=True
-    )
-    # st.subheader("Fill in Your Customer's Values:")
+    # st.markdown(
+    #     "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
+    #     unsafe_allow_html=True
+    # )
+    st.subheader("Fill in Your Customer's Values:")
 
 
     # Calculate the current day of the year for days_in_year
@@ -1546,11 +1546,11 @@ def user_input_form_random_forest():
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    # st.subheader("Fill in Your Customer's Values:")
-    st.markdown(
-        "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
-        unsafe_allow_html=True
-    )
+    st.subheader("Fill in Your Customer's Values:")
+    # st.markdown(
+    #     "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
+    #     unsafe_allow_html=True
+    # )
 
 
     # Get current date
@@ -1659,11 +1659,11 @@ def user_input_form_xgboost():
     # st.dataframe(pros_cons_df, use_container_width=True)  # interactive alternative :contentReference[oaicite:13]{index=13}
     # st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("---")
-    # st.subheader("Fill in Your Customer's Values:")
-    st.markdown(
-        "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
-        unsafe_allow_html=True
-    )
+    st.subheader("Fill in Your Customer's Values:")
+    # st.markdown(
+    #     "<h3 style='color:#FFC107;'>Fill in Your Customer's Values:</h3>",
+    #     unsafe_allow_html=True
+    # )
 
 
     # Get the current date
@@ -1873,7 +1873,20 @@ def home_page(models, data, raw_data):
     # )
     # st.header("Welcome to Fin-ML Studio!")
     st.markdown(
-        "<h1 style='color:#9966FF;'>Welcome to FinML Studio!</h1>",
+        """
+        <style>
+        /* move the whole page content up */
+        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+
+        /* give page titles a predictable gap from whatever is above them */
+        h1.page-title { margin-top: -0.25rem; margin-bottom: 0rem; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+        "<h1 class='page-title' style='color:#9966FF;'>Welcome to FinML Studio!</h1>",
         unsafe_allow_html=True
     )
     # st.markdown(
@@ -2009,63 +2022,102 @@ def home_page(models, data, raw_data):
 
 # Prediction Page
 def prediction_page(models, data):
-    # introduction
-    # st.header("Predicting Term Deposit Subscription")
     st.markdown(
-        "<h1 style='color:#9966FF;'>Predicting Term Deposit Subscription<span style='color:white;'> - Choose an AI/ML Model Below</span></h1>",
+        """
+        <style>
+        /* move the whole page content up */
+        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+
+        /* give page titles a predictable gap from whatever is above them */
+        h1.page-title { margin-top: -2.5rem; margin-bottom: 0rem; }
+        </style>
+        """,
         unsafe_allow_html=True
     )
-    # st.markdown("---")
-    # st.subheader("Choose an AI/ML Model below!")
 
-    # 0) build full_feature_list once
-    full_feature_list = [c for c in data.columns if c != "y"]
+    st.markdown(
+        "<h1 class='page-title' style='color:#9966FF;'>Predicting Term Deposit Subscription"
+        "<span style='color:white;'> - Choose an AI/ML Model Below</span></h1>",
+        unsafe_allow_html=True
+    )
 
-    # Build the tabs for users to choose which model
-    tabs = st.tabs(list(models.keys()))
-    for tab, (name, model) in zip(tabs, models.items()):
-        with tab:
-            # st.subheader(f"{name} Model")
-            # Dispatch to the right input form
+    model_names = list(models.keys())
 
-            if name == 'Decision Tree':
-                inputs_dict = user_input_form_decision_tree()
-            elif name == 'Random Forest':
-                inputs_dict = user_input_form_random_forest()
-            else:
-                inputs_dict = user_input_form_xgboost()
+    # --- set a default active model once ---
+    if "active_model" not in st.session_state:
+        st.session_state.active_model = model_names[0]   # pick the first by default
+    if "prev_active_model" not in st.session_state:
+        st.session_state.prev_active_model = st.session_state.active_model
 
-            # store input
-            inputs = pd.DataFrame([inputs_dict])
-            # print(inputs)
-            feature_names = tuple(inputs_dict.keys())
+    # --- selector (segmented control with radio fallback) ---
+    try:
+        active = st.segmented_control(" ", model_names, key="active_model")
+    except Exception:
+        active = st.radio("Model", model_names, index=model_names.index(st.session_state.active_model), key="active_model")
 
-            st.markdown("<br>", unsafe_allow_html=True)
+    # --- clear per-model predictions when switching models ---
+    if st.session_state.active_model != st.session_state.prev_active_model:
+        for n in model_names:
+            st.session_state[f"{n}_has_pred"] = False
+            st.session_state[f"{n}_pred"] = None
+            st.session_state[f"{n}_input_snapshot"] = None
+        st.session_state.prev_active_model = st.session_state.active_model
 
-            # button that allos prediction
-            if st.button(f"Predict with {name}  🔍", key=name):
-                st.markdown("---", unsafe_allow_html=True)
-                pred = make_prediction(model, inputs)
-                # st.markdown("<br><br>", unsafe_allow_html=True)
-                display_prediction(pred)
+    # now you can safely use:
+    name  = st.session_state.active_model
+    model = models[name]
 
-                # Load XAI explaianers to prepare for explaining prediction output
-                shap_exp, lime_exp = load_explainers(model, data, feature_names)
+    # --- collect inputs (your existing per-model forms) ---
+    if name == 'Decision Tree':
+        inputs_dict = user_input_form_decision_tree()
+    elif name == 'Random Forest':
+        inputs_dict = user_input_form_random_forest()
+    else:
+        inputs_dict = user_input_form_xgboost()
 
-                # print("XAI:", inputs)
-                st.markdown("---")
+    inputs = pd.DataFrame([inputs_dict])
+    feature_names = tuple(inputs_dict.keys())
 
-                # st.markdown("""<br></br>""")
+    # per-model keys
+    run_key  = f"{name}_has_pred"
+    pred_key = f"{name}_pred"
+    snap_key = f"{name}_input_snapshot"
 
-                # Wrap around XAI explanations in an expander
+    st.session_state.setdefault(run_key, False)
+    st.session_state.setdefault(pred_key, None)
+    st.session_state.setdefault(snap_key, None)
 
-                with st.expander("🧠 Check how the model makes its decision through explainable AI (XAI)", expanded=True):
-                    show_explanations(
-                        model,
-                        inputs,
-                        shap_exp,
-                        lime_exp
-                    )
+    # auto-cancel when inputs change
+    snapshot_now = tuple((k, inputs_dict[k]) for k in sorted(inputs_dict))
+    if st.session_state[snap_key] is not None and st.session_state[snap_key] != snapshot_now:
+        st.session_state[run_key]  = False
+        st.session_state[pred_key] = None
+
+    # buttons
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        do_predict = st.button(f"Predict with {name}  🔍", key=f"predict_{name}")
+    with c2:
+        do_cancel  = st.button("Try Another Prediction 🔄", key=f"cancel_{name}")
+
+    if do_cancel:
+        st.session_state[run_key]  = False
+        st.session_state[pred_key] = None
+
+    if do_predict:
+        st.session_state[pred_key] = make_prediction(model, inputs)
+        st.session_state[snap_key] = snapshot_now
+        st.session_state[run_key]  = True
+
+    if st.session_state[run_key] and st.session_state[pred_key] is not None:
+        st.markdown("---", unsafe_allow_html=True)
+        display_prediction(st.session_state[pred_key])
+        shap_exp, lime_exp = load_explainers(model, data, feature_names)
+        st.markdown("---")
+        with st.expander("🧠 Check how the model makes its decision through explainable AI (XAI)", expanded=True):
+            show_explanations(model, inputs, shap_exp, lime_exp)
+
+
 
 # Function displaying the interactive dashboard page
 def dashboard_page(data):
@@ -2146,21 +2198,48 @@ def dashboard_page(data):
         unsafe_allow_html=True
     )
 
+    st.markdown(
+        """
+        <style>
+        /* lift page content */
+        .block-container { padding-top: 0.75rem; }
+
+        /* align rows that contain page titles + controls */
+        .page-title-row {
+            display: flex;
+            align-items: flex-end;   /* aligns the selectbox baseline with title bottom */
+            margin-top: -4rem;
+            margin-bottom: 0rem;
+        }
+
+        h1.page-title {
+            margin: 0;   /* reset margins so row spacing takes effect */
+            color: #9966FF;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
     # display introductuin
     # st.header("Interactive Dashboard - Choose Your Persona & Explore Key Metrics and Visualizations")
-    col1, col2 = st.columns([6, 1])  # 3:1 width ratio
+    with st.container():
+        st.markdown("<div class='page-title-row'>", unsafe_allow_html=True)
+        col1, col2 = st.columns([6, 1])  # 3:1 width ratio
 
-    with col1:
-        st.markdown(
-            "<h1 style='color:#9966FF; margin-bottom:0;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
-            unsafe_allow_html=True
-        )
+        with col1:
+            st.markdown(
+                "<h1 class='page-title' style='color:#9966FF; margin-bottom:0;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
+                unsafe_allow_html=True
+            )
 
-    with col2:
-        persona = st.selectbox(
-            "User Persona:",  # empty label so it doesn't show above
-            ["Salesperson", "Marketing Manager"]
-        )
+        with col2:
+            persona = st.selectbox(
+                "User Persona:",  # empty label so it doesn't show above
+                ["Salesperson", "Marketing Manager"]
+            )
+        st.markdown("</div>", unsafe_allow_html=True)
+
     # st.markdown(
     #     "<h1 style='color:#9966FF;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
     #     unsafe_allow_html=True
@@ -2525,7 +2604,20 @@ def dashboard_page(data):
 # Displays clustering page
 def clustering_page(data): 
     st.markdown(
-                "<h1 style='color:#9966FF;'>Customer Segmentation</h1>",
+        """
+        <style>
+        /* move the whole page content up */
+        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+
+        /* give page titles a predictable gap from whatever is above them */
+        h1.page-title { margin-top: -2.5rem; margin-bottom: 0rem; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(
+                "<h1 class='page-title'style='color:#9966FF;'>Customer Segmentation</h1>",
                 unsafe_allow_html=True
             )
     # st.header("Customer Segmentation")
@@ -2714,8 +2806,19 @@ def clustering_page(data):
 
 # Showing the data overview & export page
 def overview_page(data, preprocessed):
-    
-    st.markdown("<h1 style='color:#9966FF;'>Data Overview & Export</h1>",unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+        /* move the whole page content up */
+        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+
+        /* give page titles a predictable gap from whatever is above them */
+        h1.page-title { margin-top: -2.5rem; margin-bottom: 0rem; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    ) 
+    st.markdown("<h1 class='page-title' style='color:#9966FF;'>Data Overview & Export</h1>",unsafe_allow_html=True)
 
     # st.header("Data Overview & Export")
     st.markdown("---")
@@ -2839,9 +2942,22 @@ def overview_page(data, preprocessed):
 # Displays the final acknowledgement page
 def acknowledgement_page(data):
 
+    st.markdown(
+        """
+        <style>
+        /* move the whole page content up */
+        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+
+        /* give page titles a predictable gap from whatever is above them */
+        h1.page-title { margin-top: -2.5rem; margin-bottom: 0rem; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    ) 
+
     # display text
     # st.header("Acknowledgements")
-    st.markdown("<h1 style='color:#9966FF;'>Acknowledgements</h1>",unsafe_allow_html=True)
+    st.markdown("<h1 class='page-title' style='color:#9966FF;'>Acknowledgements</h1>",unsafe_allow_html=True)
     st.markdown("---")
 
     #FFC107
@@ -2886,6 +3002,18 @@ PAGE_TO_INDEX = {
 # The main function that puts everything together
 def main():
     # st.title("Bank Term Deposit App")
+    st.markdown(
+        """
+        <style>
+        /* move the whole page content up */
+        .block-container { padding-top: 0.25rem; } /* tweak 0–1rem to taste */
+
+        /* give page titles a predictable gap from whatever is above them */
+        h1.page-title { margin-top: 0.25rem; margin-bottom: 1rem; }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
     # only update page, sidebar will be sync iin a different way
     if "page" not in st.session_state:
@@ -2902,12 +3030,34 @@ def main():
         # ignore new_choice, just copy over the widget state
         st.session_state.page = st.session_state.sidebar_choice
 
+    SIDEBAR_TITLE_STYLE = """
+        <style>
+        .sidebar-h1 {
+            font-size: 2.5rem !important;   /* match main h1 */
+            font-weight: bold;
+            color: #A569FF;
+            margin-top:0.25rem;
+        }
+        </style>
+    """
+    st.markdown(SIDEBAR_TITLE_STYLE, unsafe_allow_html=True)
+
     # display sidebar
     with st.sidebar:
         # title
         # st.title("FinML Studio")
         st.markdown(
-            "<h1 style='color:#A569FF;'>FinML Studio</h1>",
+            "<br>",
+            unsafe_allow_html=True
+        )
+        
+        # st.markdown(
+        #     "<h1 style='color:#A569FF;'>FinML Studio</h1>",
+        #     unsafe_allow_html=True
+        # )
+        # st.markdown("<h1 class='sidebar-h1'>FinML Studio</h1>", unsafe_allow_html=True)
+        st.markdown(
+            "<h1 style='color:#A569FF; font-size:2.5rem; font-weight:bold; margin-top:1.25rem;'>FinML Studio</h1>",
             unsafe_allow_html=True
         )
 
@@ -2980,6 +3130,9 @@ def main():
             st.session_state.page = "Home"
             # st.experimental_rerun()
             st.rerun()
+    # a tiny spacer so the title doesn't crowd the button
+    st.markdown("<div style='height:0.20rem'></div>", unsafe_allow_html=True)
+
 
     # page navigation based on user's selection
     if page == "Home":
