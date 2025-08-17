@@ -32,7 +32,8 @@ import hdbscan
 from shap.plots._waterfall import waterfall_legacy
 import streamlit.components.v1 as components
 from sklearn.linear_model import LogisticRegression
-
+from streamlit_scroll_to_top import scroll_to_here
+from io import BytesIO
 import base64
 
 # deployment check
@@ -42,6 +43,25 @@ import base64
 
 # -----------------------------------------------
 
+
+# Scroll Up Functionality CODE
+#-----------------------------------------------
+#-----------------------------------------------
+#-----------------------------------------------
+
+def goto(page_name: str):
+    st.session_state.page = page_name
+    st.session_state._scroll_top = True
+    st.rerun()
+
+# Initialize page once
+if "page" not in st.session_state:
+    st.session_state.page = "Home"
+    
+
+# Handle nav-triggered jump to top (ONE pop in the whole app)
+if st.session_state.pop("_scroll_top", False):
+    scroll_to_here(0, key="top")
 
 # Helper functions
 
@@ -77,7 +97,9 @@ def daily_line_altair(df):
             tooltip=["days_in_year", "Contacts Made"]
         )
         .properties(width="container", height=300,
-                    title="Daily Contacts Made Over a Year")
+                    title="Daily Contacts Made Over a Year",
+                    padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
+                    ).configure_title(fontSize=18, anchor="start")
     )
     return chart
 
@@ -131,8 +153,9 @@ def monthly_line_altair(df):
 
     # 4d) combine and style
     chart = (line + labels).properties(
-        width="container", height=300, title="Monthly Contacts Made"
-    )
+        width="container", height=300, title="Monthly Contacts Made",
+        padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
+    ).configure_title(fontSize=18, anchor="start")
 
     return chart
 
@@ -186,7 +209,8 @@ def monthly_success_altair(df):
     chart = (line + labels).properties(
         width="container",
         height=300,
-        title="Monthly Success Rate"
+        title="Monthly Success Rate",
+        padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
     ).configure_title(fontSize=18, anchor="start")
 
     return chart
@@ -339,7 +363,8 @@ def kde_age_distribution(df, field="age", filter_col="y", filter_val=1, bandwidt
         .properties(
             width="container",
             height=300,
-            title="Age Distribution over Wins (KDE)"
+            title="Age Distribution over Wins (KDE)",
+            padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
         )
         .configure_title(fontSize=18, anchor="start")
         .configure_axis(labelFontSize=12, titleFontSize=14)
@@ -415,8 +440,11 @@ def plot_age_duration_heatmap(df,
           )
           .properties(
             width="container", height=400,
+            padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
             title="Conversion Rate Heatmap (Age × Duration in Minutes)"
           )
+          .configure_title(fontSize=18, anchor="start")
+          .configure_axis(labelFontSize=12, titleFontSize=14)
     )
     return chart
 
@@ -488,8 +516,11 @@ def plot_loans_duration_heatmap(df, dur_start=0, dur_end=1200, dur_step=60):
           )
           .properties(
             width="container", height=400,
+            padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
             title="Conversion Rate Heatmap (Loans × Duration in Minutes)"
           )
+          .configure_title(fontSize=18, anchor="start")
+          .configure_axis(labelFontSize=12, titleFontSize=14)
     )
     return chart
 
@@ -603,7 +634,7 @@ def auto_hdbscan(X, min_size=10):
 # Function to show feature example and descriptions table
 def show_example_table(data, selected_cols):
 
-    st.subheader("Feature Descriptions & Examples:")
+    # st.subheader("Feature Descriptions & Examples:")
     # st.markdown(
     #     f"""<h2>{'<span style="color:#9966FF;">Feature Descriptions & Examples:</span>'}</h2>""",
     #     unsafe_allow_html=True
@@ -711,7 +742,7 @@ def show_cluster_feature_means_raw(data, selected_cols):
 
     # ─── Cluster Means & Δ-Means Tables ───────────────────────────────
     st.markdown(
-        f"""<h2>{"<span style='color:#9966FF;'>Customer Groups' Feature Means Table</span>"}</h2>""",
+        f"""<h2>{"<span style='color:#00BCD4;'>Customer Groups' Feature Means Table</span>"}</h2>""",
         unsafe_allow_html=True
     )
     # st.subheader("For Regular Means:")
@@ -801,7 +832,7 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
 # Function that plots Tree-Based Importance to show importance of each factor
 def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
     st.markdown(
-        f"""<h2>{'<span style="color:#9966FF;">Important Factors That Formed the Customer Groups (& Outliers)</span>'}</h2>""",
+        f"""<h2>{'<span style="color:#00BCD4;">Important Factors That Formed the Customer Groups (& Outliers)</span>'}</h2>""",
         unsafe_allow_html=True
     )
     # st.header("Important Factors That Formed the Customer Groups (& Outliers)")
@@ -832,7 +863,7 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
 
             # 3) Create a smaller figure on a light-grey background
             fig, ax = plt.subplots(
-                figsize=(3, 3),            # smaller width x height
+                figsize=(8, 4),            # smaller width x height
             )
             light_bg = "#f5f5f5"
             fig.patch.set_facecolor(light_bg)
@@ -849,7 +880,7 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
                     h,
                     f"{h:.2f}",
                     ha="center", va="bottom",
-                    fontsize=5,
+                    fontsize=10,
                     color="#333"
                 )
 
@@ -858,13 +889,29 @@ def plot_tree_feature_importance(data, X_scaled, selected_cols, top_n=5):
             ax.set_title(f"Top {top_n} Important Features for {title}", color="#333", fontsize=8)
             ax.set_xlabel("Features", color="#333", fontsize=8)
             ax.set_ylabel("Importance Score", color="#333", fontsize=8)
-            ax.tick_params(colors="#333")
-            plt.setp(ax.get_xticklabels(), rotation=45, ha="right", color="#333", fontsize=8)
+            ax.tick_params(colors="#333", size=4)
+            plt.setp(ax.get_xticklabels(), rotation=0, color="#333", fontsize=8)
+            plt.setp(ax.get_yticklabels(), color="#333", fontsize=8)
 
             plt.tight_layout()
 
             # 7) Render with fixed width
-            st.pyplot(fig, use_container_width=False)
+            # st.pyplot(fig, use_container_width=False)
+            buf = BytesIO()
+            fig.savefig(buf, format="png", bbox_inches="tight")
+            buf.seek(0)
+            img_bytes = buf.getvalue()
+            b64 = base64.b64encode(img_bytes).decode()
+
+            st.markdown(
+                f"""
+                <div style="display:flex; justify-content:center;">
+                    <img src="data:image/png;base64,{b64}" style="max-width:100%; height:auto;">
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
 
     return rf_models
 
@@ -979,7 +1026,6 @@ def get_lime_explainer(
     )
 
 
-# Function that plots LIME Explanation for Custom Point (via Top-Feature Sliders)
 def show_lime_explanation_custom(
     rf_model,
     scaler,
@@ -987,8 +1033,17 @@ def show_lime_explanation_custom(
     selected_cols: list,
     top_n: int = 5
 ):
+    # --- session state for resetting the form ---
+    if "lime_form_id" not in st.session_state:
+        st.session_state.lime_form_id = 0
+    form_id = st.session_state.lime_form_id
+
     st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader("Adjust the values for your client. Use the Table Above to Refer to the Right Features")
+    st.markdown(
+        "<h3><span style='color:#00BCD4;'>Adjust the values for your client. "
+        "Use the Table Above to Refer to the Right Features</span></h3>",
+        unsafe_allow_html=True
+    )
 
     # 1) Identify top-n features by RF importance
     importances = pd.Series(rf_model.feature_importances_, index=selected_cols)
@@ -996,42 +1051,58 @@ def show_lime_explanation_custom(
     global_means = data[selected_cols].mean()
 
     # 2) Collect slider inputs inside a FORM
-    with st.form("lime_form"):
-        # st.markdown("#### Use the Table Above to Refer to the Right Features:")
+    with st.form(key=f"lime_form_{form_id}"):
         raw_vals = {}
         for feat in top_feats:
             lo, hi = float(data[feat].min()), float(data[feat].max())
             default = float(global_means[feat])
-            if feat == "balance":
-                raw_vals[feat] = st.slider(feat, lo, hi, default, step=0.01, format="%.2f")
-            else:
-                raw_vals[feat] = st.slider(feat, int(lo), int(hi), int(default), step=1, format="%d")
-        submit = st.form_submit_button("Run Customer Group Assignment Prediction")
 
-    # 3) Only on submit do you build & show LIME
+            # Give each slider a key that includes the form_id
+            slider_key = f"lime_{feat}_{form_id}"
+
+            if feat == "balance":
+                raw_vals[feat] = st.slider(
+                    feat, lo, hi, default, step=0.01, format="%.2f", key=slider_key
+                )
+            else:
+                raw_vals[feat] = st.slider(
+                    feat, int(lo), int(hi), int(default), step=1, format="%d", key=slider_key
+                )
+
+        submit = st.form_submit_button("🔍 Run Customer Group Assignment Prediction")
+
+    # 3) Only on submit do you build & show result
     if not submit:
         return
 
-    with st.spinner ("Finding the best group for your added customer..."):
+    with st.spinner("Finding the best group for your added customer..."):
         # 3) Build the raw point & scale it
-        raw_point = np.array([ raw_vals.get(f, global_means[f]) 
-                            for f in selected_cols ]).reshape(1, -1)
+        raw_point = np.array([raw_vals.get(f, global_means[f]) for f in selected_cols]).reshape(1, -1)
         scaled_pt = scaler.transform(raw_point)
 
-        # # 4) Predict & pull out class names
+        # 4) Predict & pull out class names
         pred_label = int(rf_model.predict(scaled_pt)[0])
         sk_classes = list(rf_model.classes_)
         pred_index = sk_classes.index(pred_label)
-        label_map  = {cid: ("Outliers" if cid==-1 else f"Customer Group {cid+1}") for cid in sk_classes}
-        class_names = [label_map[cid] for cid in sk_classes]
+        label_map = {cid: ("Outliers" if cid == -1 else f"Customer Group {cid+1}") for cid in sk_classes}
 
-        # st.subheader(f"Predicted Outcome: {label_map[pred_label]} "
-        #         f"(probability={rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.2f}%)")
-
-        msg = f"Predicted Outcome: <span style='color: #FFC107;'>{label_map[pred_label]}</span>, (probability= <span style='color:#FFC107;'>{rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.0f}%</span>)"
-
+        msg = (
+            "Predicted Outcome: "
+            f"<span style='color:#FFC107;'>{label_map[pred_label]}</span>, "
+            "(probability= "
+            f"<span style='color:#FFC107;'>{rf_model.predict_proba(scaled_pt)[0][pred_index]*100:.0f}%</span>)"
+        )
         st.markdown(f"<h2>{msg}</h2>", unsafe_allow_html=True)
         st.markdown("---")
+
+    # 5) Add a reset button to start fresh
+    col1, col2 = st.columns([1, 3])
+    with col1:
+        if st.button("🔁 Try a new prediction"):
+            st.session_state.lime_form_id += 1  # bump the form id to reset widget state
+            st.rerun()  # reload page so defaults take effect
+
+    # Note: If the user does NOT click reset, they can keep tweaking the sliders and re-submitting.
 
     # if insist to display XAI for customer segmentation
     # # # 5) Prepare a small sample for LIME (cap at 200 rows)
@@ -1078,7 +1149,7 @@ def show_lime_explanation_custom(
 # Function that plots 3D Scatter on Raw
 def plot_3d_clusters_raw(data, selected_cols, top_features):
     st.markdown(
-        f"""<h2>{'<span style="color:#9966FF;">3D Cluster Visualization</span>'}</h2>""",
+        f"""<h2>{'<span style="color:#00BCD4;">3D Cluster Visualization</span>'}</h2>""",
         unsafe_allow_html=True
     )
     # st.header("3D Cluster Visualization")
@@ -1876,51 +1947,26 @@ def home_page(models, data, raw_data):
         """
         <style>
         /* move the whole page content up */
-        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+        .block-container { padding-top: 0rem; } /* tweak 0–1rem to taste */
 
         /* give page titles a predictable gap from whatever is above them */
-        h1.page-title { margin-top: -0.25rem; margin-bottom: 0rem; }
+        h1.page-title { margin-top: -2rem; margin-bottom: 0.75rem; font-size: 7em }
         </style>
         """,
         unsafe_allow_html=True
     )
 
     st.markdown(
-        "<h1 class='page-title' style='color:#9966FF;'>Welcome to FinML Studio!</h1>",
+        """
+        <h1 class='page-title'>
+            Welcome to 
+            <span style="color:#FFC107;">Fin</span><span style="color:#00BCD4;">ML</span> Studio!
+        </h1>
+        """,
         unsafe_allow_html=True
     )
-    # st.markdown(
-    #     "<h1 style='color:#9966FF;'>Header!</h1>",
-    #     unsafe_allow_html=True
-    # )
-    # st.markdown(
-    #     "<h1 style='color:#A569FF;'>Header!</h1>",
-    #     unsafe_allow_html=True
-    # )
-    # st.markdown(
-    #     "<h1 style='color:#BA55FF;'>Header!</h1>",
-    #     unsafe_allow_html=True
-    # )
-    # st.markdown(
-    #     "<h1 style='color:#9966FF;'>Header!</h1>",
-    #     unsafe_allow_html=True
-    # )
-    # st.markdown(
-    #     "<h1 style='color:#BF00FF;'>Header!</h1>",
-    #     unsafe_allow_html=True
-    # )
-    # st.markdown(
-    #     "<h1 style='color:#AD33FF;'>Header!</h1>",
-    #     unsafe_allow_html=True
-    # )
-    # st.markdown(
-    #     "<h1 style='color:#00BCD4;'>Body!</h1>",
-    #     unsafe_allow_html=True
-    # )
-    # st.markdown(
-    #     "<h1 style='color:#FFC107;'>Body!</h1>",
-    #     unsafe_allow_html=True
-    # )
+
+    # st.markdown("""<br>""", unsafe_allow_html=True)
 
     st.markdown("---")
 
@@ -2026,20 +2072,21 @@ def prediction_page(models, data):
         """
         <style>
         /* move the whole page content up */
-        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+        .block-container { padding-top: 0rem; } /* tweak 0–1rem to taste */
 
         /* give page titles a predictable gap from whatever is above them */
-        h1.page-title { margin-top: -2.5rem; margin-bottom: 0rem; }
+        h1.page-title { margin-top: 0rem; margin-bottom: 1.25rem; }
         </style>
         """,
         unsafe_allow_html=True
     )
 
     st.markdown(
-        "<h1 class='page-title' style='color:#9966FF;'>Predicting Term Deposit Subscription"
+        "<h1 class='page-title' style='color:#FFC107;'>Predicting Term Deposit Subscription"
         "<span style='color:white;'> - Choose an AI/ML Model Below</span></h1>",
         unsafe_allow_html=True
     )
+    st.markdown("<hr>",unsafe_allow_html=True) 
 
     model_names = list(models.keys())
 
@@ -2160,7 +2207,6 @@ def dashboard_page(data):
         padding: 1rem !important;
         }
 
-
         [data-testid="stMarkdownContainer"] h4 {
         background-color: #393939;
         color: white;
@@ -2202,19 +2248,20 @@ def dashboard_page(data):
         """
         <style>
         /* lift page content */
-        .block-container { padding-top: 0.75rem; }
+        .block-container { padding-top: 0rem; }
 
         /* align rows that contain page titles + controls */
         .page-title-row {
             display: flex;
             align-items: flex-end;   /* aligns the selectbox baseline with title bottom */
-            margin-top: -4rem;
+            margin-top: 0rem;
             margin-bottom: 0rem;
         }
 
         h1.page-title {
             margin: 0;   /* reset margins so row spacing takes effect */
             color: #9966FF;
+            margin-top:0rem
         }
         </style>
         """,
@@ -2223,16 +2270,17 @@ def dashboard_page(data):
 
     # display introductuin
     # st.header("Interactive Dashboard - Choose Your Persona & Explore Key Metrics and Visualizations")
+    
     with st.container():
         st.markdown("<div class='page-title-row'>", unsafe_allow_html=True)
         col1, col2 = st.columns([6, 1])  # 3:1 width ratio
 
         with col1:
             st.markdown(
-                "<h1 class='page-title' style='color:#9966FF; margin-bottom:0;'>Interactive Dashboard - Explore Key Metrics & Visualizations</h1>",
+                "<h1 class='page-title' style='color:#FFC107;'>Interactive Dashboard"
+                "<span style='color:white;'> - Explore Key Metrics & Visualizations</span></h1>",
                 unsafe_allow_html=True
             )
-
         with col2:
             persona = st.selectbox(
                 "User Persona:",  # empty label so it doesn't show above
@@ -2248,7 +2296,7 @@ def dashboard_page(data):
     # # st.subheader("Choose Your Persona & Explore Key Metrics and Visualizations:")
     # persona = st.selectbox("User Persona:", ["Salesperson", "Marketing Manager"])
     # st.markdown("---")
-    st.markdown('<br>', unsafe_allow_html=True)
+    # st.markdown('<br>', unsafe_allow_html=True)
     # st.markdown(
     #     """
     #     <div style="border-top: 1px solid white; margin: 0; padding: 0;"></div>
@@ -2384,10 +2432,14 @@ def dashboard_page(data):
     # st.markdown("---")
     # st.markdown('<hr>', unsafe_allow_html=True)
     # st.markdown('<br>', unsafe_allow_html=True)
+    # st.markdown(
+    #     """
+    #     <div style="border-top: 1px solid white; margin: 0; padding: 0;"></div>
+    #     """,
+    #     unsafe_allow_html=True
+    # )
     st.markdown(
-        """
-        <div style="border-top: 1px solid white; margin: 0; padding: 0;"></div>
-        """,
+        "<hr style='margin: -20px 0 0px; border:0; height:2px; background: rgba(255,255,255,1);'>",
         unsafe_allow_html=True
     )
     # st.markdown('<br>', unsafe_allow_html=True)
@@ -2607,22 +2659,22 @@ def clustering_page(data):
         """
         <style>
         /* move the whole page content up */
-        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+        .block-container { padding-top: 0rem; } /* tweak 0–1rem to taste */
 
         /* give page titles a predictable gap from whatever is above them */
-        h1.page-title { margin-top: -2.5rem; margin-bottom: 0rem; }
+        h1.page-title { margin-top: 0rem; margin-bottom: 1.25rem; }
         </style>
         """,
         unsafe_allow_html=True
     )
 
     st.markdown(
-                "<h1 class='page-title'style='color:#9966FF;'>Customer Segmentation</h1>",
+                "<h1 class='page-title' style='color:#FFC107;'>Customer Segmentation"
+                "<span style='color:white;'> - Group the Customers Using AI</span></h1>",
                 unsafe_allow_html=True
             )
-    # st.header("Customer Segmentation")
 
-    st.markdown("<br>",unsafe_allow_html=True)
+    st.markdown("<hr>",unsafe_allow_html=True)
 
     #00BCD4
 
@@ -2747,7 +2799,7 @@ def clustering_page(data):
 
         st.markdown("<br></br>", unsafe_allow_html=True)
 
-        with st.expander("🔍 Click Here to See More Visualizations Below!"):
+        with st.expander("Click Here to See More Visualizations Below!", expanded=True):
 
 
             clustered = data.assign(Cluster=st.session_state["labels"])
@@ -2780,7 +2832,12 @@ def clustering_page(data):
             
             # 6) LIME explainer in an expander
             st.markdown("---")
-            with st.expander("Try enter a new customer to see which group does he/she belong!", expanded=True):
+            # st.subheader("Try enter a new customer to see which group does he/she belong!")
+            st.markdown(
+                "<h2 class='page-title' style='color:#FFC107;'>Try Enter a New Customer to See Which Group Does he/she Belong!</h2>",
+                unsafe_allow_html=True
+            )
+            with st.expander(" ", expanded=True):
                 # st.markdown("---")
                 show_example_table(clustered, selected_cols)
 
@@ -2810,15 +2867,15 @@ def overview_page(data, preprocessed):
         """
         <style>
         /* move the whole page content up */
-        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+        .block-container { padding-top: 0rem; } /* tweak 0–1rem to taste */
 
         /* give page titles a predictable gap from whatever is above them */
-        h1.page-title { margin-top: -2.5rem; margin-bottom: 0rem; }
+        h1.page-title { margin-top: 0rem; margin-bottom: 1.25rem; }
         </style>
         """,
         unsafe_allow_html=True
     ) 
-    st.markdown("<h1 class='page-title' style='color:#9966FF;'>Data Overview & Export</h1>",unsafe_allow_html=True)
+    st.markdown("<h1 class='page-title' style='color:#FFC107;'>Data Overview & Export</h1>",unsafe_allow_html=True) 
 
     # st.header("Data Overview & Export")
     st.markdown("---")
@@ -2946,10 +3003,10 @@ def acknowledgement_page(data):
         """
         <style>
         /* move the whole page content up */
-        .block-container { padding-top: 0.75rem; } /* tweak 0–1rem to taste */
+        .block-container { padding-top: 0rem; } /* tweak 0–1rem to taste */
 
         /* give page titles a predictable gap from whatever is above them */
-        h1.page-title { margin-top: -2.5rem; margin-bottom: 0rem; }
+        h1.page-title { margin-top: 0rem; margin-bottom: 0rem; }
         </style>
         """,
         unsafe_allow_html=True
@@ -2957,7 +3014,7 @@ def acknowledgement_page(data):
 
     # display text
     # st.header("Acknowledgements")
-    st.markdown("<h1 class='page-title' style='color:#9966FF;'>Acknowledgements</h1>",unsafe_allow_html=True)
+    st.markdown("<h1 class='page-title' style='color:#FFC107;'>Acknowledgements</h1>",unsafe_allow_html=True)
     st.markdown("---")
 
     #FFC107
@@ -3006,10 +3063,10 @@ def main():
         """
         <style>
         /* move the whole page content up */
-        .block-container { padding-top: 0.25rem; } /* tweak 0–1rem to taste */
+        .block-container { padding-top: 0rem; } /* tweak 0–1rem to taste */
 
         /* give page titles a predictable gap from whatever is above them */
-        h1.page-title { margin-top: 0.25rem; margin-bottom: 1rem; }
+        h1.page-title { margin-top: 0rem; margin-bottom: 0rem; }
         </style>
         """,
         unsafe_allow_html=True
@@ -3046,20 +3103,34 @@ def main():
     with st.sidebar:
         # title
         # st.title("FinML Studio")
+        # st.markdown(
+        #     "<br>",
+        #     unsafe_allow_html=True
+        # )
+
         st.markdown(
-            "<br>",
+            """
+            <style>
+            [data-testid="stSidebar"] img {
+                margin-top: -100px;   /* adjust negative value as needed */
+                margin-bottom:-75px;
+            }
+            </style>
+            """,
             unsafe_allow_html=True
         )
+
+        st.image("Visualizations/Homepage_Icons/sidebar-icon.png", width=290)  # Use an icon for success
         
         # st.markdown(
         #     "<h1 style='color:#A569FF;'>FinML Studio</h1>",
         #     unsafe_allow_html=True
         # )
         # st.markdown("<h1 class='sidebar-h1'>FinML Studio</h1>", unsafe_allow_html=True)
-        st.markdown(
-            "<h1 style='color:#A569FF; font-size:2.5rem; font-weight:bold; margin-top:1.25rem;'>FinML Studio</h1>",
-            unsafe_allow_html=True
-        )
+        # st.markdown(
+        #     "<h1 style='color:#A569FF; font-size:2.5rem; font-weight:bold; margin-top:-5rem;'>FinML Studio</h1>",
+        #     unsafe_allow_html=True
+        # )
 
 
         today = datetime.date.today().strftime("%Y-%m-%d")
@@ -3100,7 +3171,12 @@ def main():
             }
         )
         if choice != current:
+            # st.session_state.page = choice
+            # # goto(choice)
+
             st.session_state.page = choice
+            st.session_state._scroll_top = True
+            st.rerun()
 
         # --- Help & feedback Expander---
         with st.expander("❓ Help & Docs"):
