@@ -2068,30 +2068,35 @@ def home_page(models, data, raw_data):
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<p class="card-desc">Come pick a box below to get started!</p>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
+    # for local deployment
+
+    # cloud_deployment=""
+    cloud_deployment="Code/Model_Deployment/"
+
     cards = [
         (
             "Subscription Prediction",
             "Use our AI/ML model to predict will a client subscribe the product!",
             "Deposit Subscription Prediction",
-            "Visualizations/Homepage_Icons/predictive-icon.jpg"
+            f"{cloud_deployment}Visualizations/Homepage_Icons/predictive-icon.jpg"
         ),
         (
             "Interactive Dashboard",
             "Find out underlying trends and insights via exploratory data analysis (EDA)!",
             "Interactive Dashboard",
-            "Visualizations/Homepage_Icons/dashboard-icon.jpg"
+            f"{cloud_deployment}Visualizations/Homepage_Icons/dashboard-icon.jpg"
         ),
         (
             "Customer Segmentation",
             "Intelligently assign customers into groups with our clustering algorithm!",
             "Customer Segmentation",
-            "Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
+            f"{cloud_deployment}Visualizations/Homepage_Icons/cluster-analysis-icon.jpg"
         ),
         (
             "Data Overview & Export",
             "Download & use our original / cleaned data prepared for you!",
             "Data Overview & Export",
-            "Visualizations/Homepage_Icons/export-data-icon.jpg"
+            f"{cloud_deployment}Visualizations/Homepage_Icons/export-data-icon.jpg"
         ),
     ]
 
