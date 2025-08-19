@@ -71,36 +71,63 @@ if st.session_state.pop("_scroll_top", False):
 
 # function that plots daily line graph
 def daily_line_altair(df):
-    # limit to be within 365 (omit day 366)
+    # Detect indexing (1-based vs 0-based)
+    zero_indexed = df["days_in_year"].min() == 0
+
+    # Quarter boundaries for a 365-day year (your convention: 91, 182, 273, 364)
+    q_ends_1based = [91, 182, 273]
+    q_ends = [x - 1 for x in q_ends_1based] if zero_indexed else q_ends_1based
+
+    # Limit to be within 365 (omit day 365)
     df = df[df["days_in_year"] < 365]
-    # 1) Aggregate your raw counts
+
+    # 1) Aggregate raw counts
     day_counts = (
-        df
-        .groupby("days_in_year", as_index=False)["y"]
-        .sum()
-        .rename(columns={"y": "Contacts Made"})
+        df.groupby("days_in_year", as_index=False)["y"]
+          .sum()
+          .rename(columns={"y": "Contacts Made"})
     )
-    # 2) Create a full index of days 1–364
-    full = pd.DataFrame({"days_in_year": range(1, 365)})
+
+    # 2) Create a full index of days (1..364 or 0..364 depending on indexing)
+    start_day = 0 if zero_indexed else 1
+    full = pd.DataFrame({"days_in_year": range(start_day, 365)})
+
     # 3) Left-merge and fill missing with 0
     merged = full.merge(day_counts, on="days_in_year", how="left")
     merged["Contacts Made"] = merged["Contacts Made"].fillna(0)
 
-    # 4) Chart that merged DataFrame
-    chart = (
+    # 4) Base line chart
+    line = (
         alt.Chart(merged)
         .mark_line(interpolate="linear", point=True)
         .encode(
-            x=alt.X("days_in_year:Q", title="Day of Year", scale=alt.Scale(domain=[1, 364]),   
-                    axis=alt.Axis(tickMinStep=1)),
+            x=alt.X(
+                "days_in_year:Q",
+                title="Day of Year",
+                scale=alt.Scale(domain=[start_day, 364], nice=False, clamp=True),
+                axis=alt.Axis(tickMinStep=1),
+            ),
             y=alt.Y("Contacts Made:Q", title="Contacts Made"),
-            tooltip=["days_in_year", "Contacts Made"]
+            tooltip=["days_in_year:Q", "Contacts Made:Q"],
         )
-        .properties(width="container", height=300,
-                    title="Daily Contacts Made Over a Year",
-                    padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
-                    ).configure_title(fontSize=18, anchor="start")
     )
+
+    # 5) Quarter boundary rules (vertical lines)
+    q_rules_df = pd.DataFrame({"days_in_year": q_ends})
+    quarter_rules = (
+        alt.Chart(q_rules_df)
+        .mark_rule(size=2, color="rgba(255,255,255,0.55)", strokeDash=[4, 4])
+        .encode(x="days_in_year:Q")
+    )
+
+    # 6) Combine
+    chart = (line + quarter_rules).properties(
+        width="container",
+        height=300,
+        title="Daily Contacts Made Over a Year",
+        padding={"top": 20, "right": 0, "bottom": 0, "left": 0},
+    ).configure_title(fontSize=18, anchor="start")
+
     return chart
 
 # plot monthly trend_line graph
@@ -151,8 +178,25 @@ def monthly_line_altair(df):
         text=alt.Text("Contacts Made:Q")
     )
 
-    # 4d) combine and style
-    chart = (line + labels).properties(
+    # 4c) quarter boundary rules at end of Mar/Jun/Sep/Dec
+    #    Built from `base` so it already has data; works in Altair v4.
+    quarter_rules = (
+        base
+        .transform_filter(
+            alt.FieldOneOfPredicate(field="month_name",
+                                    oneOf=["Mar", "Jun", "Sep", "Dec"])
+        )
+        .mark_rule(size=2, color="rgba(255,255,255,0.25)", strokeDash=[4, 4])
+        .encode(
+            x=alt.X("month_name:O", sort=names)
+            # NOTE: In Altair v4 this draws at the CENTER of the month band.
+            # If you later upgrade to Altair 5, add: bandPosition=1 to place it
+            # at the END of each month band (true quarter boundary).
+        )
+    )
+
+    # 5) combine and style
+    chart = (line + labels + quarter_rules).properties(
         width="container", height=300, title="Monthly Contacts Made",
         padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
     ).configure_title(fontSize=18, anchor="start")
@@ -205,8 +249,25 @@ def monthly_success_altair(df):
         text=alt.Text("rate_pct:Q", format=".1f")
     )
 
-    # 4) Combine plot & data labels
-    chart = (line + labels).properties(
+    # 4) quarter boundary rules at end of Mar/Jun/Sep/Dec
+    #    Built from `base` so it already has data; works in Altair v4.
+    quarter_rules = (
+        base
+        .transform_filter(
+            alt.FieldOneOfPredicate(field="month_name",
+                                    oneOf=["Mar", "Jun", "Sep", "Dec"])
+        )
+        .mark_rule(size=2, color="rgba(255,255,255,0.25)", strokeDash=[4, 4])
+        .encode(
+            x=alt.X("month_name:O", sort=months)
+            # NOTE: In Altair v4 this draws at the CENTER of the month band.
+            # If you later upgrade to Altair 5, add: bandPosition=1 to place it
+            # at the END of each month band (true quarter boundary).
+        )
+    )
+
+    # 5) Combine plot & data labels
+    chart = (line + labels + quarter_rules).properties(
         width="container",
         height=300,
         title="Monthly Success Rate",
@@ -281,6 +342,8 @@ def plot_loan_venn(
     scale=0.34,
     dpi=100,
 ):
+
+    # get different proportions
     wins = df[df[filter_col] == filter_val]
     both     = int(((wins["housing"] == 1) & (wins["loan"] == 1)).sum())
     housing  = int(wins["housing"].sum()) - both
@@ -291,6 +354,7 @@ def plot_loan_venn(
     fig, ax = plt.subplots(figsize=(w_in, h_in), dpi=dpi, facecolor="none")
     ax.set_facecolor("none")
 
+    # build venn diagram
     v = venn2(
         subsets=(housing, personal, both),
         set_labels=("Housing Loan", "Personal Loan"),
@@ -302,6 +366,7 @@ def plot_loan_venn(
     v.get_patch_by_id('01').set_color('#EF553B')
     v.get_patch_by_id('11').set_color('#00CC96')
 
+    # build frame
     fscale = max(width_px, height_px) / 300.0
     for txt in v.set_labels:
         txt.set_color("white"); txt.set_fontweight("bold"); txt.set_alpha(1); txt.set_fontsize(7 * fscale)
@@ -321,12 +386,9 @@ def plot_loan_venn(
     ax.margins(0.01, 0.01)
 
     # Move the diagram UP by shrinking bottom and enlarging top margin
-    plt.subplots_adjust(left=0.00, right=0.98, top=0.92, bottom=0.00)
+    plt.subplots_adjust(left=0.00, right=0.98, top=0.52, bottom=0.00)
 
     return fig
-
-
-
 
 
 # Function that displays KDE plot
@@ -362,7 +424,7 @@ def kde_age_distribution(df, field="age", filter_col="y", filter_val=1, bandwidt
         )
         .properties(
             width="container",
-            height=300,
+            height=350,
             title="Age Distribution over Wins (KDE)",
             padding={"top": 20, "right": 0, "bottom": 0, "left": 0},  # ← add top padding
         )
@@ -778,6 +840,7 @@ def show_cluster_feature_means_raw(data, selected_cols):
     )
     st.dataframe(styled_means)
 
+    # Delta table (uncomment to use)
     # st.subheader("For Δ-means (Customer Group Mean - Overall Mean):")
     # # st.write("Δ-means (Customer Group Mean - Overall Mean):")
     # styled_delta = (
@@ -798,7 +861,7 @@ def plot_violin_top_features_raw(data, selected_cols, top_n=3):
     cluster_means = data.groupby("Cluster")[selected_cols].mean()
     top_feats = cluster_means.var().sort_values(ascending=False).index[:top_n].tolist()
 
-    # Codebase for printing the violin plots (kept incase if we are going back)
+    # Codebase for printing the violin plots (uncomment to reuse)
 
     # # 2) Build a label mapping: -1 → Noise, else → Cluster {i}
     # unique_idxs = sorted(data["Cluster"].unique())
@@ -1008,6 +1071,7 @@ def show_shap_explanation_custom(
     # render that
     st.pyplot(fig)
 
+# get function for LIME
 @st.cache_data(show_spinner=False)
 def get_lime_explainer(
     sample: np.ndarray,
@@ -1025,7 +1089,7 @@ def get_lime_explainer(
         discretize_continuous=True
     )
 
-
+# show the lime explanation from the lime explainer
 def show_lime_explanation_custom(
     rf_model,
     scaler,
@@ -1303,6 +1367,7 @@ def show_explanations(model, inputs, shap_explainer, lime_explainer, max_lime_fe
         .lime > table:nth-of-type(2) svg g rect {{
         transform: translateY(6px);    /* separate bars visually */
         }}
+        
 
         /* Mobile fallback: stack vertically */
         @media (max-width: 1100px) {{
@@ -1777,8 +1842,7 @@ def user_input_form_xgboost():
     # 4) input handling
     housing = float(housing)
     loan = float(loan)
-    duration = float(duration) *60
-    # duration*=60
+    duration = float(duration) * 60
     # days_in_year = float(days_in_year)
     if contact_cellular=="No":
         contact_cellular=0
@@ -1859,8 +1923,8 @@ def display_prediction(prediction):
     # Predict success case:
     if prediction[0] == 1:
         with col1:
-            st.image("Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
-            # st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
+            # st.image("Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
+            st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
         with col2:
             # st.write("### The Marketing Campaign will Succeed!")
             st.markdown(
@@ -1871,8 +1935,8 @@ def display_prediction(prediction):
     # Predict failure case:
     elif prediction[0] == 0:
         with col1:
-            st.image("Visualizations/Result_Icons/failure_icon.png", width=50)  # Use an icon for failure
-            # st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
+            # st.image("Visualizations/Result_Icons/failure_icon.png", width=50)  # Use an icon for failure
+            st.image("Code/Model_Deployment/Visualizations/Result_Icons/success_icon.png", width=50)  # Use an icon for success
         with col2:
             # st.write("### The Marketing Campaign will Fail.")
             st.markdown(
@@ -1899,7 +1963,6 @@ def _img_to_base64(path):
 def home_page(models, data, raw_data):
 
     # CSS
-    # 1️⃣ Inject CSS to sync card text with nav‐link
     st.markdown(
         """
         <style>
@@ -1937,12 +2000,6 @@ def home_page(models, data, raw_data):
         unsafe_allow_html=True,
     )
 
-    # 2️⃣ Use those classes in your header & intro
-    # st.markdown(
-    #     '<h2 class="card-title">Welcome to the FinDS-ML Studio!</h2>',
-    #     unsafe_allow_html=True
-    # )
-    # st.header("Welcome to Fin-ML Studio!")
     st.markdown(
         """
         <style>
@@ -1974,17 +2031,17 @@ def home_page(models, data, raw_data):
 
     # st.markdown('<p class="card-desc">This app uses data science and machine learning methodologies to improve the performance of a bank financial product, especially in the areas of: </p>', unsafe_allow_html=True)
     st.markdown(
-    """
-    <p class="card-desc">
-        This app uses 
-        <span style="color:#00BCD4;">data science</span> 
-        and 
-        <span style="color:#00BCD4;">machine learning</span> 
-        methodologies to improve the performance of a bank financial product, especially in the areas of:
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+        """
+        <p class="card-desc">
+            This app uses 
+            <span style="color:#00BCD4;">data science</span> 
+            and 
+            <span style="color:#00BCD4;">machine learning</span> 
+            methodologies to improve the performance of a bank financial product, especially in the areas of:
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
     st.markdown(
         """
         <ol class="card-desc" style="margin-left:1.5rem; padding-left:0;">
@@ -2042,6 +2099,7 @@ def home_page(models, data, raw_data):
         </style>
         """, unsafe_allow_html=True)
 
+    # for each box, show image, title, and button
     for col, (title, desc, page_key, img_path) in zip(cols, cards):
         with col:
             uri = _img_to_base64(img_path)
@@ -2165,7 +2223,6 @@ def prediction_page(models, data):
             show_explanations(model, inputs, shap_exp, lime_exp)
 
 
-
 # Function displaying the interactive dashboard page
 def dashboard_page(data):
     # ─── Inject CSS for the card shape ─────────────────────────────────
@@ -2244,6 +2301,7 @@ def dashboard_page(data):
         unsafe_allow_html=True
     )
 
+    # more CSS styling
     st.markdown(
         """
         <style>
@@ -2328,6 +2386,7 @@ def dashboard_page(data):
         )
         return fig
 
+    # show most important factor as a KPI card
     def kpi_indicator_text(label, text_value, color="#000000"):
         fig = go.Figure()
 
@@ -2451,13 +2510,6 @@ def dashboard_page(data):
         row1_col1, row1_col2 = st.columns([2.85, 5], gap="medium")
         row2_col1, row2_col2 = st.columns([2.85, 5], gap="medium")
 
-        # plots for a salesperson
-        # 1. plot for sales overtime?
-        # 2. plots for outcome per variable (w/select box)
-        # 3. conversion heatmap 
-        # 4. sales-based recommendations
-
-
         # Top-left box: Marketing-based recommendation
         with row1_col1:
             st.markdown("""
@@ -2519,7 +2571,7 @@ def dashboard_page(data):
                 st.plotly_chart(contact_fig, use_container_width=True)
             with loan_tab:
                 # Plot 4: loan Venn (matplotlib)
-                venn_fig = plot_loan_venn(data, width_px=265, height_px=265, scale=0.25)
+                venn_fig = plot_loan_venn(data, width_px=300, height_px=200, scale=0.5)
                 st.markdown('<div class="venn-container">', unsafe_allow_html=True)
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -2553,12 +2605,6 @@ def dashboard_page(data):
         # --- Create our 2×2 grid ---
         row1_col1, row2_col2, row2_col1 = st.columns([1.15,1,1], gap="medium")
         # row2_col2 = st.columns(1, gap="medium")
-
-        # plots for a salesperson
-        # 1. plot for sales overtime?
-        # 2. plots for outcome per variable (w/select box)
-        # 3. conversion heatmap 
-        # 4. sales-based recommendations
 
         # Top-left box: Sales-based recommendation
         with row1_col1:
@@ -2601,7 +2647,7 @@ def dashboard_page(data):
                 st.plotly_chart(contact_fig, use_container_width=True)
             with loan_tab:
                 # Plot 4: loan Venn (matplotlib)
-                venn_fig = plot_loan_venn(data, width_px=300, height_px=300, scale=0.34) 
+                venn_fig = plot_loan_venn(data, width_px=300, height_px=225, scale=0.4) 
                 st.markdown('<div class="venn-container">', unsafe_allow_html=True)
                 st.pyplot(venn_fig)  
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -2654,7 +2700,8 @@ def dashboard_page(data):
         # st.markdown('</div>', unsafe_allow_html=True)
 
 # Displays clustering page
-def clustering_page(data): 
+def clustering_page(data):
+    # CSS on top of each page 
     st.markdown(
         """
         <style>
@@ -2675,8 +2722,6 @@ def clustering_page(data):
             )
 
     st.markdown("<hr>",unsafe_allow_html=True)
-
-    #00BCD4
 
     # ─── 0) Setup expander state & callback ────────────────────────────
     # if "cluster_expanded" not in st.session_state: 
@@ -2849,7 +2894,7 @@ def clustering_page(data):
                     top_n=5
                 )
                     
-
+                # Shoe LIME Function for XAI
                 # show_lime_explanation_custom(
                 #     # if you kept my rf_dict, you’ll need to pluck the right cluster’s RF:
                 #     # st.session_state["rf_dict"][1],
@@ -2863,6 +2908,7 @@ def clustering_page(data):
 
 # Showing the data overview & export page
 def overview_page(data, preprocessed):
+    # Inject CSS on top
     st.markdown(
         """
         <style>
@@ -3030,15 +3076,15 @@ def acknowledgement_page(data):
     <br><br>
     Additionally, I want to acknowledge <span style='color: #FFC107;'>**Sérgio Moro**</span>, <span style='color: #FFC107;'>**P. Cortez**</span>, and <span style='color: #FFC107;'>**P. Rita**</span> for sharing the UCI ML Bank Telemarketing Dataset, which is the fundamental backbone of this project.
     <br><br>
-    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>Steven Ge, Ruike Xu, Tek Chan, Jerry Chan, David Lee, TBA</span>, TBA). Their opinions and feedback on this project should be recognized.
+    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>Steven Ge, Ruike Xu, Tek Chan, Jerry Chan, David Lee</span>). Their opinions and feedback on this project should be recognized.
 
     """
     st.markdown(ack_html, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    st.image("Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
-    # st.image("Code/Model_Deployment/Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
+    # st.image("Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
+    st.image("Code/Model_Deployment/Visualizations/title_icon_temp.gif", width=300, caption="Me vibin' when I am creating this project :)")
 
 # --- MAIN APP ---
 #-----------------------------------------------
@@ -3120,8 +3166,11 @@ def main():
             unsafe_allow_html=True
         )
 
-        st.image("Visualizations/Homepage_Icons/sidebar-icon.png", width=290)  # Use an icon for success
+        # st.image("Visualizations/Homepage_Icons/sidebar-icon.png", width=290)  # Use an icon for success
+        st.image("Code/Model_Deployment/Visualizations/Homepage_Icons/sidebar-icon.png", width=290)  # Use an icon for success
         
+        
+        # If decided to show app title in text (just uncomment)
         # st.markdown(
         #     "<h1 style='color:#A569FF;'>FinML Studio</h1>",
         #     unsafe_allow_html=True
@@ -3135,7 +3184,6 @@ def main():
 
         today = datetime.date.today().strftime("%Y-%m-%d")
         st.caption(f"v1.1.0 • Last Updated On: {today}")
-        # st.caption("v1.1.0 • Data updated: 2025-06-28") 
 
         st.markdown("---")
 
@@ -3170,12 +3218,12 @@ def main():
                 },
             }
         )
+        # When moving poage
         if choice != current:
-            # st.session_state.page = choice
             # # goto(choice)
 
-            st.session_state.page = choice
-            st.session_state._scroll_top = True
+            st.session_state.page = choice # only chaning page
+            st.session_state._scroll_top = True # adding the part of scrolling back to top
             st.rerun()
 
         # --- Help & feedback Expander---
