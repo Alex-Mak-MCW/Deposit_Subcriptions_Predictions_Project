@@ -1510,18 +1510,30 @@ def load_models():
     # Load Decision Tree (or Resampled Model)
     # with open('../../Model/DT_Model_Deploy.pkl', 'rb') as f:
     # from home
-    with open('../../Model/DT_Resampled_Model_Deploy.pkl', 'rb') as f:
+    # with open('../../Model/DT_Resampled_Model_Deploy.pkl', 'rb') as f:
     # for deployment
+
+    # cloud:
+    with open('Model/DT_Resampled_Model_Deploy.pkl', 'rb') as f:
+    # local:
     # with open('Model/DT_Resampled_Model_Deploy(OLD).pkl', 'rb') as f:
         dt_pipeline = pickle.load(f)
         dt_model = dt_pipeline.named_steps['classifier']
     # Load Random Forest (or Resampled Model)
-    with open('../../Model/RF_Model_Deploy.pkl', 'rb') as f:
+    # with open('../../Model/RF_Model_Deploy.pkl', 'rb') as f:
+
+    # cloud:
+    with open('Model/XGB_Resampled_Model_Deploy.pkl', 'rb') as f:
+    # local:
     # with open('Model/RF_Resampled_Model_Deploy(OLD).pkl', 'rb') as f:
         rf_pipeline = pickle.load(f)
         rf_model = rf_pipeline.named_steps['classifier']
     # Load XGBoost (or Resampled Model)
-    with open('../../Model/XGB_Model_Deploy.pkl', 'rb') as f:
+    # with open('../../Model/XGB_Model_Deploy.pkl', 'rb') as f:
+
+    # cloud:
+    with open('Model/XGB_Resampled_Model_Deploy.pkl', 'rb') as f:
+    # local
     # with open('Model/XGB_Resampled_Model_Deploy(OLD).pkl', 'rb') as f:
         xgb_pipeline = pickle.load(f)
         xgb_model = xgb_pipeline.named_steps['classifier']
