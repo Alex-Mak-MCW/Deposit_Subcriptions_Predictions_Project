@@ -2082,7 +2082,7 @@ def home_page(models, data, raw_data):
         ),
         (
             "Interactive Dashboard",
-            "Find out underlying trends and insights via exploratory data analysis (EDA)!",
+            "Find out underlying trends & insights via exploratory data analysis (EDA)!",
             "Interactive Dashboard",
             f"{cloud_deployment}Visualizations/Homepage_Icons/dashboard-icon.jpg"
         ),
