@@ -1,8 +1,6 @@
 ---
 title: Deposit Subscriptions Predictions
 emoji: 📈
-colorFrom: indigo
-colorTo: teal
 sdk: streamlit
 app_file: Code/Model_Deployment/prototype.py
 pinned: false
