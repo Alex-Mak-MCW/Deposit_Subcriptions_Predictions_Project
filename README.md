@@ -3,6 +3,7 @@ title: Deposit Subscriptions Predictions
 emoji: 📈
 sdk: streamlit
 app_file: Code/Model_Deployment/prototype.py
+pip_requirements: Code/Model_Deployment/requirements.txt
 pinned: false
 tags:
   - streamlit
