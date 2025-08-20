@@ -1,0 +1,28 @@
+name: Sync to Hugging Face hub
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  sync-to-hub:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true         # pulls LFS pointers + files
+          fetch-depth: 0
+
+      - name: Install Git LFS
+        run: git lfs install
+
+      - name: Push to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USER:  Alex-Mak-MCW
+          HF_SPACE: deposit_subcriptions_predictions_project
+        run: |
+          set -euo pipefail
+          git remote remove space 2>/dev/null || true
+          git remote add space https://$HF_USER:$HF_TOKEN@huggingface.co/spaces/$HF_USER/$HF_SPACE
+          git push --force space HEAD:main
