@@ -11,7 +11,7 @@ tags:
   - ml
 license: apache-2.0
 ---
-
+ 
 # Deposit Subscriptions Predictions Project
 
 This is a graduate course-level research project completed by Emily Au, Alex Mak, and Zheng En Than in MATH 509 (Data Structures and Platforms) at the University of Alberta. This project strives to predict whether bank clients will subscribe to term deposit subscriptions through tree-based machine-learning classifier models (Decision Tree, Random Forest, and XGBoost).
