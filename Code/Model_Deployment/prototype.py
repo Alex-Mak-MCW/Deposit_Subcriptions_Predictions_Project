@@ -3093,7 +3093,7 @@ def acknowledgement_page(data):
     <br><br>
     Additionally, I want to acknowledge <span style='color: #FFC107;'>**Sérgio Moro**</span>, <span style='color: #FFC107;'>**P. Cortez**</span>, and <span style='color: #FFC107;'>**P. Rita**</span> for sharing the UCI ML Bank Telemarketing Dataset, which is the fundamental backbone of this project.
     <br><br>
-    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>Steven Ge, Ruike Xu, Tek Chan, Jerry Chan, David Lee</span>). Their opinions and feedback on this project should be recognized.
+    Last but not least, shout out to the user test group (<span style='color: #FFC107;'>**Steven Ge**, **Ruike Xu**, **Tek Chan**, **Jerry Chan**, **David Lee**</span>). Their opinions and feedback on this project should be recognized.
 
     """
     st.markdown(ack_html, unsafe_allow_html=True)
