@@ -99,4 +99,4 @@ The following screenshots are what the app looks like when it's deployed.
 - We are looking forward to implementing gradient-boosted random forest (GBRF), which incorporates both bagging and boosting in a tree-based model. We can analyze the impact of using both bagging and boosting compared to just one of them at a time in Random Forest and Decision Tree.
 - We would conduct more in-depth analysis, such as exploring any temporal patterns or clustering the data based on client demographics to provide deeper insights into customer behavior, ultimately helping banks devise more effective targeted marketing strategies.
 
-## If you are interested to know more about our project, please feel free to visit our report to see our work in detail!
+## If you are interested to know more about our project, please feel free to visit our report to see our work in detail! 
