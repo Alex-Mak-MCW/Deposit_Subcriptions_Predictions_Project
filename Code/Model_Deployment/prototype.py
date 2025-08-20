@@ -2154,7 +2154,7 @@ def prediction_page(models, data):
         </style>
         """,
         unsafe_allow_html=True
-    )
+    ) 
 
     st.markdown(
         "<h1 class='page-title' style='color:#FFC107;'>Predicting Term Deposit Subscription"
