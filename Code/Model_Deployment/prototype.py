@@ -2198,7 +2198,7 @@ def prediction_page(models, data):
         inputs_dict = user_input_form_xgboost()
 
     inputs = pd.DataFrame([inputs_dict])
-    feature_names = tuple(inputs_dict.keys())
+    feature_names = tuple(inputs_dict.keys()) 
 
     # per-model keys
     run_key  = f"{name}_has_pred"
