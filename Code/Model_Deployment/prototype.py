@@ -1523,7 +1523,7 @@ def load_models():
     # with open('../../Model/RF_Model_Deploy.pkl', 'rb') as f:
 
     # cloud:
-    with open('Model/XGB_Resampled_Model_Deploy.pkl', 'rb') as f:
+    with open('Model/RF_Resampled_Model_Deploy.pkl', 'rb') as f:
     # local:
     # with open('Model/RF_Resampled_Model_Deploy(OLD).pkl', 'rb') as f:
         rf_pipeline = pickle.load(f)
