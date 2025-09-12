@@ -70,9 +70,11 @@ We have conducted the following steps in our project:
 - Please clone this repo, then go to Code --> Model_Deployment, and enter the folloiwng command:
 
 ```bash
+git clone https://github.com/Alex-Mak-MCW/Deposit_Subcriptions_Predictions_Project.git
+cd Code/Model_Deployment
 streamlit run Deployment_Codebase.py
 ```
-
+<!--
 The following screenshots are what the app looks like when it's deployed.
 
 - Initialization
@@ -86,6 +88,7 @@ The following screenshots are what the app looks like when it's deployed.
 - Failed Prediction
 
 ![Screenshot 3](Code/Model_Deployment/Visualizations/failed_prediction.png)
+-->
 
 ## 7. Project Critique
 
